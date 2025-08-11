@@ -10,7 +10,7 @@ class Arayuz(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Bağlantı İndirici")
-        self.geometry("600x300")  # Pencere boyutunu büyüttük
+        self.geometry("600x300")
         
         try:
             self.indirici = Indirici()
@@ -29,10 +29,9 @@ class Arayuz(tk.Tk):
 
         self.url_giris = tk.Entry(ana_frame, width=80)
         self.url_giris.pack(fill=tk.X, pady=(0, 10))
-        self.url_giris.bind("<KeyRelease>", self.url_kontrol) # URL değiştiğinde kontrol et
+        self.url_giris.bind("<KeyRelease>", self.url_kontrol)
 
-        # İndirme Tipi Seçenekleri
-        self.indirme_tipi = tk.StringVar(value="video") # Varsayılan: video
+        self.indirme_tipi = tk.StringVar(value="video")
         self.tip_frame = tk.Frame(ana_frame)
         self.tip_frame.pack(fill=tk.X, pady=(0,10))
         
@@ -41,7 +40,7 @@ class Arayuz(tk.Tk):
         self.video_radio.pack(side=tk.LEFT, padx=10)
         self.ses_radio = tk.Radiobutton(self.tip_frame, text="Ses (MP3)", variable=self.indirme_tipi, value="ses")
         self.ses_radio.pack(side=tk.LEFT)
-        self.tip_frame.pack_forget() # Başlangıçta gizle
+        self.tip_frame.pack_forget()
         
         dizin_frame = tk.Frame(ana_frame)
         dizin_frame.pack(fill=tk.X, pady=(0, 10))
@@ -66,9 +65,6 @@ class Arayuz(tk.Tk):
         self.durum_etiket.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
     def url_kontrol(self, event=None):
-        """
-        URL'ye göre indirme seçeneklerini gösterir veya gizler.
-        """
         url = self.url_giris.get()
         if "youtube.com" in url or "youtu.be" in url:
             self.tip_frame.pack(fill=tk.X, pady=(0,10))
@@ -94,7 +90,6 @@ class Arayuz(tk.Tk):
         self.progress_bar["value"] = 0
         self.update_idletasks()
         
-        # İndirme tipini Radiobutton'lardan al
         indirme_tipi = self.indirme_tipi.get()
 
         self.thread = threading.Thread(target=self.indir_islemi, args=(url, self.kayit_dizini, indirme_tipi))
@@ -111,6 +106,8 @@ class Arayuz(tk.Tk):
         if basari:
             self.durum_etiket.config(text=sonuc, fg="green")
             self.progress_bar["value"] = 100
+            self.url_giris.delete(0, 'end') # URL kutusunu temizle
+            self.url_kontrol() # İndirme seçeneklerini gizle
         else:
             self.durum_etiket.config(text=sonuc, fg="red")
             self.progress_bar["value"] = 0
