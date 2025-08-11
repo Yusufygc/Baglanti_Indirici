@@ -20,6 +20,7 @@ class Indirici:
         indirme_tipi: 'video' veya 'ses' olabilir.
         """
         try:
+            klasor_adi = ""
             if "youtube.com" in url or "youtu.be" in url or "youtube.com/shorts" in url:
                 klasor_adi = "YouTube"
             elif "instagram.com" in url:
@@ -27,18 +28,21 @@ class Indirici:
             else:
                 return "Geçersiz URL. Lütfen bir YouTube veya Instagram adresi girin.", False
 
-            hedef_dizin = os.path.join(kayit_dizini, klasor_adi)
+            # Kullanıcının seçtiği dizin adı, oluşturulacak klasörle aynıysa yeni bir alt klasör oluşturma
+            if os.path.basename(kayit_dizini).lower() == klasor_adi.lower():
+                hedef_dizin = kayit_dizini
+            else:
+                hedef_dizin = os.path.join(kayit_dizini, klasor_adi)
+
             os.makedirs(hedef_dizin, exist_ok=True)
             
             # yt-dlp komutunu indirme tipine göre oluştur
             komut = ["yt-dlp"]
             
             if indirme_tipi == "ses":
-                # Sadece sesi indir ve mp3 olarak kaydet
                 komut.extend(["--extract-audio", "--audio-format", "mp3"])
                 komut.extend(["-o", os.path.join(hedef_dizin, "%(title)s.%(ext)s")])
             else:
-                # Video indir
                 komut.extend(["-o", os.path.join(hedef_dizin, "%(title)s.%(ext)s")])
             
             komut.append(url)
