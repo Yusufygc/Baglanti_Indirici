@@ -1,6 +1,6 @@
 # Bağlantı İndirici 📥
 
-Modern ve kullanıcı dostu bir PyQt5 tabanlı video/ses indirici uygulaması. YouTube, TikTok, Instagram, Facebook ve X (Twitter) gibi popüler platformlardan video ve ses dosyalarını kolayca indirin.
+Modern ve kullanıcı dostu bir PyQt5 tabanlı video/ses indirici uygulaması. YouTube, TikTok, Instagram, Facebook ,Pinterest ve X (Twitter) gibi popüler platformlardan video ve ses dosyalarını kolayca indirin.
 
 ![Python](https://img.shields.io/badge/Python-3.7%2B-blue)
 ![PyQt5](https://img.shields.io/badge/PyQt5-5.15%2B-green)
