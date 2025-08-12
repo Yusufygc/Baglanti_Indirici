@@ -6,19 +6,21 @@ import yt_dlp
 
 class IndiriciSinyalleri(QObject):
     """
-    İndirme işlemi sırasında arayüze sinyal göndermek için kullanılır.
+    Kullanıcı arayüzüne indirme işlemi sırasında sinyal göndermek için kullanılır.
+    Used to send signals to the user interface during the download process.
     """
     platform_belirlendi = pyqtSignal(str)
     klasor_hazirlandi = pyqtSignal(str)
     indirme_basladi = pyqtSignal(str)
     ilerleme_guncellendi = pyqtSignal(int, str)
     indirme_bitti = pyqtSignal()
-    iptal_edildi = pyqtSignal() # İptal sinyali için yeni eklenen
+    iptal_edildi = pyqtSignal() 
     hata_olustu = pyqtSignal(str)
 
 class Indirici(QThread):
     """
     yt-dlp ve ffmpeg kullanarak indirme işlemini ayrı bir thread'de yürütür.
+    Executes the download process in a separate thread using yt-dlp and ffmpeg.
     """
     def __init__(self, url, indirme_dizini, secenek, dosya_adi=None):
         super().__init__()
@@ -28,12 +30,17 @@ class Indirici(QThread):
         self.dosya_adi = dosya_adi
         self.sinyaller = IndiriciSinyalleri()
         self._is_cancelled = False # İptal durumunu tutmak için yeni eklenen
+        self._ydl = None
 
     def iptal_et(self):
         """
         İndirme işlemini iptal etmek için çağrılır.
+        Called to cancel the download process.
         """
         self._is_cancelled = True
+        if self._ydl:
+            self._ydl.to_screen('İndirme işlemi iptal ediliyor...')
+            self._ydl.trouble = KeyboardInterrupt # Force a KeyboardInterrupt in the ydl process
 
     def run(self):
         try:
@@ -57,13 +64,22 @@ class Indirici(QThread):
             # --- FFmpeg YOLU AYARI ---
             # yt-dlp, FFmpeg'i sistem PATH'inde arar. Eğer hata alırsanız, 
             # buradaki 'ffmpeg' değerini, ffmpeg.exe dosyasının tam yolu ile değiştirin.
-            # Örneğin: r'C:\Program Files\ffmpeg\bin\ffmpeg.exe'
+            # For example: r'C:\Program Files\ffmpeg\bin\ffmpeg.exe'
             ffmpeg_path = r'C:\ffmpeg\bin\ffmpeg.exe'
-
+            # V-Kullanıcının belirttiği sorunu çözmek için dosya adlarına sonek ekliyoruz
+            # EN-To solve the issue reported by the user, we're adding a suffix to the filenames.
             if self.dosya_adi:
-                outtmpl_template = os.path.join(hedef_klasor, f'{self.dosya_adi}.%(ext)s')
+                # Kullanıcı dosya adı belirttiyse, sonek ekle
+                if self.secenek == "video":
+                    outtmpl_template = os.path.join(hedef_klasor, f'{self.dosya_adi}_video.%(ext)s')
+                else: # self.secenek == "ses"
+                    outtmpl_template = os.path.join(hedef_klasor, f'{self.dosya_adi}_audio.%(ext)s')
             else:
-                outtmpl_template = os.path.join(hedef_klasor, '%(title)s.%(ext)s')
+                # Kullanıcı dosya adı belirtmediyse, orijinal başlığa sonek ekle
+                if self.secenek == "video":
+                    outtmpl_template = os.path.join(hedef_klasor, '%(title)s_video.%(ext)s')
+                else: # self.secenek == "ses"
+                    outtmpl_template = os.path.join(hedef_klasor, '%(title)s_audio.%(ext)s')
             
             if self.secenek == "video":
                 ydl_opts = {
@@ -87,6 +103,7 @@ class Indirici(QThread):
                 }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                self._ydl = ydl # Store the ydl instance to be able to cancel it
                 ydl.download([self.url])
 
             if not self._is_cancelled:
@@ -95,9 +112,8 @@ class Indirici(QThread):
                 self.sinyaller.iptal_edildi.emit()
 
         except KeyboardInterrupt:
-            # İndirme işlemi iptal edildiğinde burası çalışır.
+            # Bu, iptal etme fonksiyonumuzun çalıştığını gösterir
             self.sinyaller.iptal_edildi.emit()
-            # Önemli: Bu noktadan sonra başka bir işlem yapmadan fonksiyonu sonlandırın.
             return
         except yt_dlp.utils.DownloadError as e:
             self.sinyaller.hata_olustu.emit(f"Bir indirme hatası oluştu: {e}")
@@ -108,6 +124,8 @@ class Indirici(QThread):
         """
         yt-dlp tarafından indirme ilerlemesini bildirmek için çağrılır.
         Aynı zamanda iptal durumunu kontrol eder ve indirmeyi durdurur.
+        Called by yt-dlp to report download progress.
+        Also checks for the cancel status and stops the download.
         """
         # İptal durumu kontrolü
         if self._is_cancelled:
@@ -134,6 +152,7 @@ class Indirici(QThread):
     def platform_belirle(self):
         """
         URL'ye göre platform adını belirler.
+        Determines the platform name based on the URL.
         """
         try:
             parsed_url = urllib.parse.urlparse(self.url)
@@ -158,6 +177,7 @@ class Indirici(QThread):
         """
         İndirme klasörünü hazırlar.
         Seçilen dizin adı platform adı ile aynıysa yeni klasör oluşturmaz.
+        Prepares the download folder. If the selected directory name is the same as the platform name, it does not create a new folder.
         """
         if os.path.basename(self.indirme_dizini).lower() == platform_adi.lower():
             return self.indirme_dizini
