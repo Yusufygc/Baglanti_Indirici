@@ -1,128 +1,208 @@
-# ttk'dan widget'ları import etmek yerine ttkbootstrap'tan import edin
-import tkinter as tk
-from tkinter import filedialog
+# arayuz.py
+import sys
+import os
+from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
+                             QLabel, QLineEdit, QPushButton, QFileDialog,
+                             QTextEdit, QProgressBar, QRadioButton)
+from PyQt5.QtCore import Qt, pyqtSlot
 from indirici import Indirici
-import threading
 
-# ttkbootstrap kütüphanesini içeri aktarın
-import ttkbootstrap as ttk
-from ttkbootstrap.constants import * # ALL, SUCCESS, INFO, DANGER gibi sabitleri içe aktarır
-
-class Arayuz(ttk.Window): # tk.Tk yerine ttk.Window kullanın
+class UygulamaArayuzu(QWidget):
     def __init__(self):
-        super().__init__(themename="superhero") # 'superhero' temasıyla başlatıyoruz. Başka temalar da seçebilirsiniz.
-        self.title("Bağlantı İndirici")
-        self.geometry("600x300")
-        
-        try:
-            self.indirici = Indirici()
-        except FileNotFoundError:
-            self.destroy()
-            return
+        super().__init__()
+        self.setWindowTitle("Bağlantı İndirici")
+        self.setGeometry(300, 300, 600, 400)
 
-        self._arayuz_olustur()
-    
-    def _arayuz_olustur(self):
-        # Arayüz elemanlarını ttk.Frame, ttk.Button vb. olarak değiştirin.
-        ana_frame = ttk.Frame(self, padding=20)
-        ana_frame.pack(fill=tk.BOTH, expand=True)
+        # Varsayılan indirme dizini
+        self.indirme_dizini = os.path.join(os.path.expanduser('~'), 'Downloads')
+        self.indirici_thread = None
 
-        # Label yerine ttk.Label kullanın
-        url_etiket = ttk.Label(ana_frame, text="Lütfen indirmek istediğiniz URL'yi girin:")
-        url_etiket.pack(pady=(0, 5), anchor="w")
+        self.arayuzu_olustur()
 
-        # Entry yerine ttk.Entry kullanın
-        self.url_giris = ttk.Entry(ana_frame, width=80)
-        self.url_giris.pack(fill=tk.X, pady=(0, 10))
-        self.url_giris.bind("<KeyRelease>", self.url_kontrol)
+    def arayuzu_olustur(self):
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(10)
+        main_layout.setAlignment(Qt.AlignTop)
 
-        self.indirme_tipi = tk.StringVar(value="video")
-        self.tip_frame = ttk.Frame(ana_frame)
-        self.tip_frame.pack(fill=tk.X, pady=(0,10))
-        
-        ttk.Label(self.tip_frame, text="İndirme Tipi:").pack(side=tk.LEFT)
-        # Radiobutton yerine ttk.Radiobutton kullanın
-        self.video_radio = ttk.Radiobutton(self.tip_frame, text="Video", variable=self.indirme_tipi, value="video")
-        self.video_radio.pack(side=tk.LEFT, padx=10)
-        self.ses_radio = ttk.Radiobutton(self.tip_frame, text="Ses (MP3)", variable=self.indirme_tipi, value="ses")
-        self.ses_radio.pack(side=tk.LEFT)
-        self.tip_frame.pack_forget()
-        
-        dizin_frame = ttk.Frame(ana_frame)
-        dizin_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        self.dizin_etiket = ttk.Label(dizin_frame, text="Kaydedilecek dizin: Seçilmedi")
-        self.dizin_etiket.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        
-        # Button yerine ttk.Button kullanın
-        dizin_buton = ttk.Button(dizin_frame, text="Dizin Seç", command=self.dizin_sec, bootstyle="info") # bootstyle ile renk verebilirsiniz
-        dizin_buton.pack(side=tk.RIGHT)
-        
-        self.kayit_dizini = ""
+        # 1. URL Giriş Alanı
+        url_layout = QHBoxLayout()
+        self.url_label = QLabel("URL:")
+        self.url_entry = QLineEdit()
+        self.url_entry.setPlaceholderText("İndirmek istediğiniz bağlantıyı yapıştırın...")
+        url_layout.addWidget(self.url_label)
+        url_layout.addWidget(self.url_entry)
 
-        # Button yerine ttk.Button kullanın
-        indir_buton = ttk.Button(ana_frame, text="İndir", command=self.baslat_thread, bootstyle="success")
-        indir_buton.pack(fill=tk.X, pady=(10, 0))
+        main_layout.addLayout(url_layout)
 
-        # Progressbar için ttk.Progressbar zaten kullanıyorduk
-        self.progress_bar = ttk.Progressbar(ana_frame, orient="horizontal", length=400, mode="determinate", bootstyle="success")
-        self.progress_bar.pack(fill=tk.X, pady=(10, 0))
+        # 2. Dizin Seçme Alanı
+        dizin_layout = QHBoxLayout()
+        self.dizin_label = QLabel("Hedef Dizin:")
+        self.dizin_display = QLabel(self.indirme_dizini)
+        self.dizin_sec_button = QPushButton("Dizin Seç")
+        self.dizin_sec_button.clicked.connect(self.dizin_sec)
+
+        dizin_layout.addWidget(self.dizin_label)
+        dizin_layout.addWidget(self.dizin_display)
+        dizin_layout.addWidget(self.dizin_sec_button)
+
+        main_layout.addLayout(dizin_layout)
         
-        durum_frame = ttk.Frame(ana_frame)
-        durum_frame.pack(pady=(10, 0), fill=tk.X)
-        self.durum_etiket = ttk.Label(durum_frame, text="", justify="left", bootstyle="info") # Renkler de bootstyle ile ayarlanabilir
-        self.durum_etiket.pack(side=tk.LEFT, fill=tk.X, expand=True)
-    
-    def url_kontrol(self, event=None):
-        """URL giriş alanındaki değişiklikleri kontrol eder"""
-        url = self.url_giris.get().strip()
+        # 3. Dosya Adı Giriş Alanı
+        dosya_adi_layout = QHBoxLayout()
+        self.dosya_adi_label = QLabel("Dosya Adı (isteğe bağlı):")
+        self.dosya_adi_entry = QLineEdit()
+        self.dosya_adi_entry.setPlaceholderText("Boş bırakılırsa orijinal isim kullanılır...")
+        dosya_adi_layout.addWidget(self.dosya_adi_label)
+        dosya_adi_layout.addWidget(self.dosya_adi_entry)
         
-        # URL'ye göre indirme tipini göster/gizle
-        if url and ('youtube.com' in url or 'youtu.be' in url):
-            self.tip_frame.pack(fill=tk.X, pady=(0,10), before=self.tip_frame.master.children['!frame2'])
-        else:
-            self.tip_frame.pack_forget()
-    
+        main_layout.addLayout(dosya_adi_layout)
+
+        # 4. İndirme Seçenekleri (Video/Ses)
+        secenek_layout = QHBoxLayout()
+        secenek_label = QLabel("İndirme Formatı:")
+        self.video_secenegi = QRadioButton("Video")
+        self.video_secenegi.setChecked(True)  # Varsayılan olarak video seçili
+        self.ses_secenegi = QRadioButton("Ses")
+        
+        secenek_layout.addWidget(secenek_label)
+        secenek_layout.addWidget(self.video_secenegi)
+        secenek_layout.addWidget(self.ses_secenegi)
+        secenek_layout.addStretch() # Düğmeleri sola yasla
+
+        main_layout.addLayout(secenek_layout)
+
+        # 5. İşlem Butonları
+        buton_layout = QHBoxLayout()
+        self.indir_button = QPushButton("İndir")
+        self.indir_button.setFixedSize(100, 40)
+        self.indir_button.clicked.connect(self.indirmeyi_baslat)
+        
+        self.iptal_button = QPushButton("İptal Et")
+        self.iptal_button.setFixedSize(100, 40)
+        self.iptal_button.setEnabled(False)  # Başlangıçta devre dışı
+        self.iptal_button.clicked.connect(self.indirmeyi_iptal_et)
+
+        buton_layout.addStretch()
+        buton_layout.addWidget(self.indir_button)
+        buton_layout.addWidget(self.iptal_button)
+        buton_layout.addStretch()
+
+        main_layout.addLayout(buton_layout)
+
+        # 6. Durum ve Log Alanı
+        self.log_display = QTextEdit()
+        self.log_display.setReadOnly(True)
+        self.log_display.setPlaceholderText("İşlem adımları burada görüntülenecek...")
+        main_layout.addWidget(self.log_display)
+
+        # 7. İlerleme Çubuğu
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.hide()
+        main_layout.addWidget(self.progress_bar)
+
+        self.setLayout(main_layout)
+
     def dizin_sec(self):
-        self.kayit_dizini = filedialog.askdirectory()
-        if self.kayit_dizini:
-            self.dizin_etiket.config(text=f"Kaydedilecek dizin: {self.kayit_dizini}")
-            
-    def baslat_thread(self):
-        # ... (bu metodda değişiklik yok)
-        # Sadece hata mesajı renklerini bootstyle ile uyumlu hale getirebiliriz
-        url = self.url_giris.get()
+        """
+        Kullanıcıdan indirme dizini seçmesini ister ve günceller.
+        """
+        yeni_dizin = QFileDialog.getExistingDirectory(self, "İndirme Dizinini Seç", self.indirme_dizini)
+        if yeni_dizin:
+            self.indirme_dizini = yeni_dizin
+            self.dizin_display.setText(self.indirme_dizini)
+            self.log_display.append(f"<b>Dizin güncellendi:</b> {self.indirme_dizini}")
+
+    def indirmeyi_baslat(self):
+        """
+        İndirme işlemini başlatır ve arayüzü günceller.
+        """
+        url = self.url_entry.text().strip()
         if not url:
-            self.durum_etiket.config(text="Lütfen bir URL girin!", bootstyle="danger")
-            return
-        
-        if not self.kayit_dizini:
-            self.durum_etiket.config(text="Lütfen bir dizin seçin!", bootstyle="danger")
+            self.log_display.append("<span style='color:red;'>Lütfen bir URL girin!</span>")
             return
 
-        self.durum_etiket.config(text="İndirme başlatılıyor...", bootstyle="warning")
-        self.progress_bar["value"] = 0
-        self.update_idletasks()
+        self.indir_button.setEnabled(False)
+        self.iptal_button.setEnabled(True)  # İndirme başladığında iptal butonunu aktif et
+        self.progress_bar.show()
+        self.progress_bar.setValue(0)
+        self.log_display.clear()
+        self.log_display.append(f"<b>URL alındı:</b> {url}")
         
-        indirme_tipi = self.indirme_tipi.get()
-
-        self.thread = threading.Thread(target=self.indir_islemi, args=(url, self.kayit_dizini, indirme_tipi))
-        self.thread.start()
-
-    def progress_guncelle(self, value):
-        self.progress_bar["value"] = value
-        self.durum_etiket.config(text=f"İndiriliyor: %{value:.2f}", bootstyle="info")
-        self.update_idletasks()
-
-    def indir_islemi(self, url, kayit_dizini, indirme_tipi):
-        sonuc, basari = self.indirici.indir(url, kayit_dizini, self.progress_guncelle, indirme_tipi)
-        
-        if basari:
-            self.durum_etiket.config(text=sonuc, bootstyle="success")
-            self.progress_bar["value"] = 100
-            self.url_giris.delete(0, 'end')
-            self.url_kontrol()
+        # Seçilen indirme seçeneğini ve dosya adını belirle
+        if self.video_secenegi.isChecked():
+            secenek = "video"
         else:
-            self.durum_etiket.config(text=sonuc, bootstyle="danger")
-            self.progress_bar["value"] = 0
-        self.update_idletasks()
+            secenek = "ses"
+        
+        dosya_adi = self.dosya_adi_entry.text().strip()
+        if not dosya_adi:
+            dosya_adi = None # Boşsa None olarak gönderelim
+
+        self.indirici_thread = Indirici(url, self.indirme_dizini, secenek, dosya_adi)
+        self.indirici_thread.sinyaller.platform_belirlendi.connect(self.log_mesaji_goster)
+        self.indirici_thread.sinyaller.klasor_hazirlandi.connect(self.log_mesaji_goster)
+        self.indirici_thread.sinyaller.indirme_basladi.connect(self.indirme_basladi_guncelle)
+        self.indirici_thread.sinyaller.ilerleme_guncellendi.connect(self.ilerleme_guncelle)
+        self.indirici_thread.sinyaller.indirme_bitti.connect(self.indirme_tamamlandi)
+        self.indirici_thread.sinyaller.iptal_edildi.connect(self.indirme_iptal_edildi) # Yeni sinyal
+        self.indirici_thread.sinyaller.hata_olustu.connect(self.indirme_hatasi)
+
+        self.indirici_thread.start()
+
+    def indirmeyi_iptal_et(self):
+        """
+        İndirme işlemini iptal etmek için sinyal gönderir.
+        """
+        if self.indirici_thread and self.indirici_thread.isRunning():
+            self.indirici_thread.iptal_et()
+            self.log_display.append("<span style='color:orange;'>İndirme işlemi iptal ediliyor...</span>")
+
+    @pyqtSlot(str)
+    def log_mesaji_goster(self, mesaj):
+        self.log_display.append(mesaj)
+    
+    @pyqtSlot(str)
+    def indirme_basladi_guncelle(self, mesaj):
+        self.log_display.append(mesaj)
+        self.progress_bar.show()
+        self.progress_bar.setValue(0)
+
+    @pyqtSlot(int, str)
+    def ilerleme_guncelle(self, yuzde, durum_mesaji):
+        """
+        İlerleme çubuğunu ve log ekranını günceller.
+        """
+        self.progress_bar.setValue(yuzde)
+        self.log_display.setText(f"<b>Durum:</b> {durum_mesaji}<br><b>İndirme yüzdesi:</b> {yuzde}%")
+
+    @pyqtSlot()
+    def indirme_tamamlandi(self):
+        self.progress_bar.setValue(100)
+        self.log_display.append("<span style='color:green;'><b>İndirme işlemi başarıyla tamamlandı!</b></span>")
+        self.progress_bar.hide()
+        self.indir_button.setEnabled(True)
+        self.iptal_button.setEnabled(False) # İndirme bittiğinde iptal butonunu devre dışı bırak
+        self.indirici_thread = None
+        self.url_entry.clear()
+        self.dosya_adi_entry.clear()
+
+    @pyqtSlot()
+    def indirme_iptal_edildi(self):
+        self.log_display.append("<span style='color:orange;'><b>İndirme işlemi iptal edildi. Uygulama yeni indirme için hazır.</b></span>")
+        self.progress_bar.hide()
+        self.indir_button.setEnabled(True)
+        self.iptal_button.setEnabled(False) # İndirme iptal edildiğinde iptal butonunu devre dışı bırak
+        self.indirici_thread = None
+        self.url_entry.clear()
+        self.dosya_adi_entry.clear()
+
+    @pyqtSlot(str)
+    def indirme_hatasi(self, hata_mesaji):
+        self.log_display.append(f"<span style='color:red;'><b>Hata:</b> {hata_mesaji}</span>")
+        self.progress_bar.hide()
+        self.indir_button.setEnabled(True)
+        self.iptal_button.setEnabled(False) # Hata oluştuğunda iptal butonunu devre dışı bırak
+        self.indirici_thread = None
+        self.url_entry.clear()
+        self.dosya_adi_entry.clear()
