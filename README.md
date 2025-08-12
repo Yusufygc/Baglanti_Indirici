@@ -75,7 +75,9 @@ yt-dlp==2023.12.30
 ```python
 ffmpeg_path = r'C:\ffmpeg\bin\ffmpeg.exe'
 ```
-yaralanabileceginiz youtube linki = https://www.youtube.com/watch?v=KBnyOH1o5Ms
+Kurulum asamasinda kullanabilceginiz youtube linki = https://www.youtube.com/watch?v=KBnyOH1o5Ms
+windows icin path'e eklemeden sadece c'ye ekleyerek de kullanabilirsiniz 
+kodun icinde ki yapiya uygun olmali ---> ffmpeg_path = r'C:\ffmpeg\bin\ffmpeg.exe'
 #### macOS
 ```bash
 # Homebrew ile
