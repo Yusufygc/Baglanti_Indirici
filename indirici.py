@@ -1,120 +1,164 @@
-import subprocess
+# indirici.py
 import os
-import re
-from tkinter import messagebox
+import urllib.parse
+from PyQt5.QtCore import QObject, pyqtSignal, QThread
+import yt_dlp
 
-class Indirici:
+class IndiriciSinyalleri(QObject):
     """
-    İndirme işlemlerini yürüten ve yöneten sınıf.
+    İndirme işlemi sırasında arayüze sinyal göndermek için kullanılır.
     """
-    def __init__(self):
-        try:
-            subprocess.run(["yt-dlp", "--version"], check=True, capture_output=True)
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            messagebox.showerror("Hata", "yt-dlp bulunamadı. Lütfen kurduğunuzdan veya PATH'e eklediğinizden emin olun.")
-            raise FileNotFoundError("yt-dlp bulunamadı.")
-    
-    def indir(self, url, kayit_dizini, progress_callback, indirme_tipi="video"):
+    platform_belirlendi = pyqtSignal(str)
+    klasor_hazirlandi = pyqtSignal(str)
+    indirme_basladi = pyqtSignal(str)
+    ilerleme_guncellendi = pyqtSignal(int, str)
+    indirme_bitti = pyqtSignal()
+    iptal_edildi = pyqtSignal() # İptal sinyali için yeni eklenen
+    hata_olustu = pyqtSignal(str)
+
+class Indirici(QThread):
+    """
+    yt-dlp ve ffmpeg kullanarak indirme işlemini ayrı bir thread'de yürütür.
+    """
+    def __init__(self, url, indirme_dizini, secenek, dosya_adi=None):
+        super().__init__()
+        self.url = url
+        self.indirme_dizini = indirme_dizini
+        self.secenek = secenek
+        self.dosya_adi = dosya_adi
+        self.sinyaller = IndiriciSinyalleri()
+        self._is_cancelled = False # İptal durumunu tutmak için yeni eklenen
+
+    def iptal_et(self):
         """
-        URL'den içerik indirir ve belirtilen dizine kaydeder.
-        indirme_tipi: 'video' veya 'ses' olabilir.
+        İndirme işlemini iptal etmek için çağrılır.
         """
+        self._is_cancelled = True
+
+    def run(self):
         try:
-            klasor_adi = ""
-            if "youtube.com" in url or "youtu.be" in url or "youtube.com/shorts" in url:
-                klasor_adi = "YouTube"
-            elif "instagram.com" in url:
-                klasor_adi = "Instagram"
-            elif "twitter.com" in url or "x.com" in url:
-                klasor_adi = "Twitter"
-            elif "tiktok.com" in url:
-                klasor_adi = "TikTok"
-            else:
-                # Diğer platformlar için genel bir klasör oluştur
-                klasor_adi = "İndirilenler"
+            platform = self.platform_belirle()
+            if platform == "Bilinmeyen" or platform == "GecersizURL":
+                self.sinyaller.hata_olustu.emit(f"Geçersiz veya desteklenmeyen URL: {self.url}")
+                return
 
-            # Kullanıcının seçtiği dizin adı, oluşturulacak klasörle aynıysa yeni bir alt klasör oluşturma
-            if os.path.basename(kayit_dizini).lower() == klasor_adi.lower():
-                hedef_dizin = kayit_dizini
-            else:
-                hedef_dizin = os.path.join(kayit_dizini, klasor_adi)
+            self.sinyaller.platform_belirlendi.emit(f"Platform belirlendi: {platform}")
 
-            os.makedirs(hedef_dizin, exist_ok=True)
-            
-            # yt-dlp komutunu indirme tipine göre oluştur
-            komut = ["yt-dlp"]
-            
-            # Güvenlik ve kalite ayarları
-            komut.extend(["--no-check-certificate"])  # SSL sorunları için
-            
-            if indirme_tipi == "ses":
-                komut.extend([
-                    "--extract-audio", 
-                    "--audio-format", "mp3",
-                    "--audio-quality", "192K"  # Ses kalitesi
-                ])
-                # Ses dosyaları için dosya adı formatı
-                komut.extend(["-o", os.path.join(hedef_dizin, "%(title)s.%(ext)s")])
-            else:
-                # Video için format seçimi (en iyi kalite)
-                komut.extend(["-f", "best[height<=1080]"])  # 1080p'ye kadar
-                komut.extend(["-o", os.path.join(hedef_dizin, "%(title)s.%(ext)s")])
-            
-            # Güvenli dosya adları için
-            komut.extend(["--restrict-filenames"])
-            
-            komut.append(url)
+            hedef_klasor = self.klasor_hazirla(platform)
+            self.sinyaller.klasor_hazirlandi.emit(f"İndirme klasörü hazır: {hedef_klasor}")
 
-            proc = subprocess.Popen(
-                komut, 
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.STDOUT, 
-                universal_newlines=True,
-                encoding='utf-8',
-                errors='replace'
-            )
-            
-            # Progress tracking
-            progress_value = 0
-            
-            for line in proc.stdout:
-                # Progress pattern'ini yakala
-                progress_match = re.search(r"\[download\]\s+(\d+\.?\d*)%", line)
-                if progress_match:
-                    progress_value = float(progress_match.group(1))
-                    progress_callback(progress_value)
-                
-                # Merge pattern'ini de yakala (video + audio birleştirme)
-                elif "[ffmpeg]" in line and "Merging" in line:
-                    progress_callback(95)  # Birleştirme sırasında %95 göster
-            
-            proc.wait()
-            
-            if proc.returncode != 0:
-                raise subprocess.CalledProcessError(proc.returncode, komut)
-            
-            # Son progress güncellemesi
-            progress_callback(100)
-            return "İndirme başarıyla tamamlandı!", True
-            
-        except subprocess.CalledProcessError as e:
-            error_msg = f"İndirme sırasında bir hata oluştu (Kod: {e.returncode})"
-            
-            # Yaygın hata durumları için özel mesajlar
-            if e.returncode == 1:
-                error_msg += "\nURL geçerli değil veya video bulunamadı."
-            elif e.returncode == 2:
-                error_msg += "\nYt-dlp parametrelerinde hata var."
+            self.sinyaller.indirme_basladi.emit("İndirme başlatılıyor...")
+
+            # İndirme işlemi başlamadan önce iptal edilmiş mi kontrol et
+            if self._is_cancelled:
+                self.sinyaller.iptal_edildi.emit()
+                return
+
+            # --- FFmpeg YOLU AYARI ---
+            # yt-dlp, FFmpeg'i sistem PATH'inde arar. Eğer hata alırsanız, 
+            # buradaki 'ffmpeg' değerini, ffmpeg.exe dosyasının tam yolu ile değiştirin.
+            # Örneğin: r'C:\Program Files\ffmpeg\bin\ffmpeg.exe'
+            ffmpeg_path = r'C:\ffmpeg\bin\ffmpeg.exe'
+
+            if self.dosya_adi:
+                outtmpl_template = os.path.join(hedef_klasor, f'{self.dosya_adi}.%(ext)s')
             else:
-                error_msg += f"\nDetay: {e}"
-                
-            return error_msg, False
+                outtmpl_template = os.path.join(hedef_klasor, '%(title)s.%(ext)s')
             
-        except PermissionError:
-            return "Dosya kaydetme izni yok. Lütfen farklı bir dizin seçin.", False
-            
-        except OSError as e:
-            return f"Dosya sistemi hatası: {e}", False
-            
+            if self.secenek == "video":
+                ydl_opts = {
+                    'outtmpl': outtmpl_template,
+                    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]',
+                    'merge_output_format': 'mp4',
+                    'ffmpeg_location': ffmpeg_path,
+                    'progress_hooks': [self.ilerleme_hook],
+                }
+            else: # self.secenek == "ses"
+                ydl_opts = {
+                    'outtmpl': outtmpl_template,
+                    'format': 'bestaudio/best',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }],
+                    'ffmpeg_location': ffmpeg_path,
+                    'progress_hooks': [self.ilerleme_hook],
+                }
+
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([self.url])
+
+            if not self._is_cancelled:
+                self.sinyaller.indirme_bitti.emit()
+            else:
+                self.sinyaller.iptal_edildi.emit()
+
+        except KeyboardInterrupt:
+            # İndirme işlemi iptal edildiğinde burası çalışır.
+            self.sinyaller.iptal_edildi.emit()
+            # Önemli: Bu noktadan sonra başka bir işlem yapmadan fonksiyonu sonlandırın.
+            return
+        except yt_dlp.utils.DownloadError as e:
+            self.sinyaller.hata_olustu.emit(f"Bir indirme hatası oluştu: {e}")
         except Exception as e:
-            return f"Beklenmedik bir hata oluştu: {e}", False
+            self.sinyaller.hata_olustu.emit(f"Beklenmeyen bir hata oluştu: {e}")
+
+    def ilerleme_hook(self, d):
+        """
+        yt-dlp tarafından indirme ilerlemesini bildirmek için çağrılır.
+        Aynı zamanda iptal durumunu kontrol eder ve indirmeyi durdurur.
+        """
+        # İptal durumu kontrolü
+        if self._is_cancelled:
+            # yt-dlp'yi durdurmak için bir istisna fırlat
+            raise KeyboardInterrupt
+
+        if d['status'] == 'downloading':
+            if d.get('total_bytes'):
+                yuzde = d['downloaded_bytes'] * 100 / d['total_bytes']
+            elif d.get('total_bytes_estimate'):
+                yuzde = d['downloaded_bytes'] * 100 / d['total_bytes_estimate']
+            else:
+                yuzde = 0
+
+            hiz = f"{d.get('speed', 0) / 1024 / 1024:.2f} MiB/s" if d.get('speed') else "Bilinmiyor"
+            tahmini_sure = f"{d.get('eta', 0)}s" if d.get('eta') else "Bilinmiyor"
+            durum_mesaji = f"Hız: {hiz}, Tahmini Kalan Süre: {tahmini_sure}"
+
+            self.sinyaller.ilerleme_guncellendi.emit(int(yuzde), durum_mesaji)
+        elif d['status'] == 'finished':
+            self.sinyaller.ilerleme_guncellendi.emit(100, "İndirme tamamlandı.")
+
+
+    def platform_belirle(self):
+        """
+        URL'ye göre platform adını belirler.
+        """
+        try:
+            parsed_url = urllib.parse.urlparse(self.url)
+            domain = parsed_url.netloc
+
+            if "youtube.com" in domain or "youtu.be" in domain:
+                return "YouTube"
+            elif "tiktok.com" in domain:
+                return "TikTok"
+            elif "instagram.com" in domain:
+                return "Instagram"
+            else:
+                return "Bilinmeyen"
+        except:
+            return "GecersizURL"
+
+    def klasor_hazirla(self, platform_adi):
+        """
+        İndirme klasörünü hazırlar.
+        Seçilen dizin adı platform adı ile aynıysa yeni klasör oluşturmaz.
+        """
+        if os.path.basename(self.indirme_dizini).lower() == platform_adi.lower():
+            return self.indirme_dizini
+        else:
+            hedef_dizin = os.path.join(self.indirme_dizini, platform_adi)
+            if not os.path.exists(hedef_dizin):
+                os.makedirs(hedef_dizin)
+            return hedef_dizin
