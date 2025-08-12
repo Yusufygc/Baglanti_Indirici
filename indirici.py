@@ -29,7 +29,7 @@ class Indirici(QThread):
         self.secenek = secenek
         self.dosya_adi = dosya_adi
         self.sinyaller = IndiriciSinyalleri()
-        self._is_cancelled = False # İptal durumunu tutmak için yeni eklenen
+        self._is_cancelled = False
         self._ydl = None
 
     def iptal_et(self):
@@ -40,7 +40,7 @@ class Indirici(QThread):
         self._is_cancelled = True
         if self._ydl:
             self._ydl.to_screen('İndirme işlemi iptal ediliyor...')
-            self._ydl.trouble = KeyboardInterrupt # Force a KeyboardInterrupt in the ydl process
+            self._ydl.trouble = KeyboardInterrupt
 
     def run(self):
         try:
@@ -56,40 +56,33 @@ class Indirici(QThread):
 
             self.sinyaller.indirme_basladi.emit("İndirme başlatılıyor...")
 
-            # İndirme işlemi başlamadan önce iptal edilmiş mi kontrol et
             if self._is_cancelled:
                 self.sinyaller.iptal_edildi.emit()
                 return
 
             # --- FFmpeg YOLU AYARI ---
-            # yt-dlp, FFmpeg'i sistem PATH'inde arar. Eğer hata alırsanız, 
-            # buradaki 'ffmpeg' değerini, ffmpeg.exe dosyasının tam yolu ile değiştirin.
-            # For example: r'C:\Program Files\ffmpeg\bin\ffmpeg.exe'
             ffmpeg_path = r'C:\ffmpeg\bin\ffmpeg.exe'
-            # V-Kullanıcının belirttiği sorunu çözmek için dosya adlarına sonek ekliyoruz
-            # EN-To solve the issue reported by the user, we're adding a suffix to the filenames.
+            
             if self.dosya_adi:
-                # Kullanıcı dosya adı belirttiyse, sonek ekle
                 if self.secenek == "video":
                     outtmpl_template = os.path.join(hedef_klasor, f'{self.dosya_adi}_video.%(ext)s')
-                else: # self.secenek == "ses"
+                else:
                     outtmpl_template = os.path.join(hedef_klasor, f'{self.dosya_adi}_audio.%(ext)s')
             else:
-                # Kullanıcı dosya adı belirtmediyse, orijinal başlığa sonek ekle
                 if self.secenek == "video":
                     outtmpl_template = os.path.join(hedef_klasor, '%(title)s_video.%(ext)s')
-                else: # self.secenek == "ses"
+                else:
                     outtmpl_template = os.path.join(hedef_klasor, '%(title)s_audio.%(ext)s')
             
             if self.secenek == "video":
                 ydl_opts = {
                     'outtmpl': outtmpl_template,
-                    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]',
+                    'format': 'bestvideo+bestaudio/best',  # En iyi formatı otomatik olarak seçer ve indirir.
                     'merge_output_format': 'mp4',
                     'ffmpeg_location': ffmpeg_path,
                     'progress_hooks': [self.ilerleme_hook],
                 }
-            else: # self.secenek == "ses"
+            else:
                 ydl_opts = {
                     'outtmpl': outtmpl_template,
                     'format': 'bestaudio/best',
@@ -103,7 +96,7 @@ class Indirici(QThread):
                 }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                self._ydl = ydl # Store the ydl instance to be able to cancel it
+                self._ydl = ydl
                 ydl.download([self.url])
 
             if not self._is_cancelled:
@@ -112,7 +105,6 @@ class Indirici(QThread):
                 self.sinyaller.iptal_edildi.emit()
 
         except KeyboardInterrupt:
-            # Bu, iptal etme fonksiyonumuzun çalıştığını gösterir
             self.sinyaller.iptal_edildi.emit()
             return
         except yt_dlp.utils.DownloadError as e:
@@ -127,9 +119,7 @@ class Indirici(QThread):
         Called by yt-dlp to report download progress.
         Also checks for the cancel status and stops the download.
         """
-        # İptal durumu kontrolü
         if self._is_cancelled:
-            # yt-dlp'yi durdurmak için bir istisna fırlat
             raise KeyboardInterrupt
 
         if d['status'] == 'downloading':
@@ -158,7 +148,10 @@ class Indirici(QThread):
             parsed_url = urllib.parse.urlparse(self.url)
             domain = parsed_url.netloc
 
-            if "youtube.com" in domain or "youtu.be" in domain:
+            # Pinterest desteği eklendi
+            if "pinterest.com" in domain or "pin.it" in domain:
+                return "Pinterest"
+            elif "youtube.com" in domain or "youtu.be" in domain:
                 return "YouTube"
             elif "tiktok.com" in domain:
                 return "TikTok"
@@ -186,3 +179,4 @@ class Indirici(QThread):
             if not os.path.exists(hedef_dizin):
                 os.makedirs(hedef_dizin)
             return hedef_dizin
+
