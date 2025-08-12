@@ -145,6 +145,10 @@ class Indirici(QThread):
                 return "TikTok"
             elif "instagram.com" in domain:
                 return "Instagram"
+            elif "facebook.com" in domain or "fb.watch" in domain:
+                return "Facebook"
+            elif "twitter.com" in domain or "x.com" in domain:
+                return "X (Twitter)"
             else:
                 return "Bilinmeyen"
         except:
