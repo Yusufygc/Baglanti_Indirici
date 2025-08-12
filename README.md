@@ -75,7 +75,6 @@ yt-dlp==2023.12.30
 ```python
 ffmpeg_path = r'C:\ffmpeg\bin\ffmpeg.exe'
 ```
-yaralanabileceginiz youtube linki = https://www.youtube.com/watch?v=KBnyOH1o5Ms
 
 #### macOS
 ```bash
@@ -132,6 +131,204 @@ Downloads/
     └── story_video.mp4
 ```
 
+## 📦 Executable (EXE) Oluşturma
+
+### PyInstaller Kurulumu
+```bash
+pip install pyinstaller
+```
+
+### Tek Dosya EXE Oluşturma
+```bash
+# Temel komut
+pyinstaller --onefile --noconsole --icon=icons/icon.ico main.py
+
+# Detaylı komut (önerilen)
+pyinstaller --onefile --noconsole --windowed --icon=icons/icon.ico --name="Baglanti-Indirici" main.py
+```
+
+### Komut Parametreleri Açıklaması
+- `--onefile`: Tüm bağımlılıkları tek bir exe dosyasında toplar
+- `--noconsole`: Konsol penceresi açılmaz (GUI uygulamaları için)
+- `--windowed`: Windows'ta pencere modunda çalışır
+- `--icon=icons/icon.ico`: Exe dosyasının simgesini belirler
+- `--name="Baglanti-Indirici"`: Exe dosyasının adını belirler
+
+### Gelişmiş Build Seçenekleri
+```bash
+# Tüm seçeneklerle birlikte
+pyinstaller ^
+    --onefile ^
+    --noconsole ^
+    --windowed ^
+    --icon=icons/icon.ico ^
+    --name="Baglanti-Indirici" ^
+    --distpath=release ^
+    --workpath=build ^
+    --specpath=spec ^
+    --add-data="icons;icons" ^
+    main.py
+```
+
+### Gerekli Dosyalar ve Klasör Yapısı
+```
+baglanti-indirici/
+├── main.py
+├── arayuz.py
+├── indirici.py
+├── icons/
+│   └── icon.ico          # Uygulama simgesi
+├── build/                # Geçici build dosyaları
+├── dist/                 # Oluşturulan exe dosyası
+└── main.spec            # PyInstaller spec dosyası
+```
+
+### İkon Dosyası Hazırlama
+1. **ICO Formatında İkon**: 
+   - 32x32, 64x64, 128x128 piksel boyutlarında
+   - `.ico` formatında olmalı
+   - Online dönüştürücüler: [ConvertICO](https://convertio.co/png-ico/)
+
+2. **İkon Olmadan Build**:
+   ```bash
+   pyinstaller --onefile --noconsole main.py
+   ```
+
+### Build Sonrası Kontroller
+```bash
+# Exe dosyasını test edin
+cd dist
+./Baglanti-Indirici.exe
+
+# Dosya boyutunu kontrol edin
+dir Baglanti-Indirici.exe
+```
+
+### Yaygın Build Sorunları ve Çözümleri
+
+#### 1. ModuleNotFoundError
+```
+ModuleNotFoundError: No module named 'PyQt5'
+```
+**Çözüm**:
+```bash
+# Tüm bağımlılıkları dahil edin
+pyinstaller --onefile --noconsole --hidden-import=PyQt5 --hidden-import=yt_dlp main.py
+```
+
+#### 2. FFmpeg Bulunamadı
+**Çözüm**: FFmpeg'i exe ile birlikte paketleyin
+```bash
+pyinstaller --onefile --noconsole --add-binary="C:/ffmpeg/bin/ffmpeg.exe;." main.py
+```
+
+#### 3. Dosya Boyutu Çok Büyük
+**Çözüm**: Gereksiz modülleri hariç tutun
+```bash
+pyinstaller --onefile --noconsole --exclude-module=matplotlib --exclude-module=pandas main.py
+```
+
+#### 4. Yavaş Başlatma
+**Çözüm**: `--onedir` seçeneği kullanın
+```bash
+pyinstaller --onedir --noconsole --icon=icons/icon.ico main.py
+```
+
+### Spec Dosyası Özelleştirme
+PyInstaller otomatik olarak `main.spec` dosyası oluşturur. Bu dosyayı düzenleyerek gelişmiş ayarlar yapabilirsiniz:
+
+```python
+# main.spec
+a = Analysis(
+    ['main.py'],
+    pathex=[],
+    binaries=[('C:/ffmpeg/bin/ffmpeg.exe', '.')],  # FFmpeg dahil et
+    datas=[('icons', 'icons')],  # İkon klasörünü dahil et
+    hiddenimports=['PyQt5', 'yt_dlp'],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=['matplotlib', 'pandas'],  # Gereksiz modüller
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='Baglanti-Indirici',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,  # UPX sıkıştırma
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,  # Konsol penceresi kapalı
+    disable_windowed_traceback=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon='icons/icon.ico'  # İkon yolu
+)
+```
+
+Spec dosyasını kullanarak build:
+```bash
+pyinstaller main.spec
+```
+
+### Dağıtım İçin Hazırlık
+
+#### 1. Klasör Yapısı
+```
+Release/
+├── Baglanti-Indirici.exe
+├── README.txt
+├── ffmpeg.exe (eğer dahil değilse)
+└── Lisans.txt
+```
+
+#### 2. Installer Oluşturma (İsteğe Bağlı)
+[Inno Setup](https://jrsoftware.org/isinfo.php) kullanarak Windows installer oluşturabilirsiniz:
+
+```pascal
+[Setup]
+AppName=Bağlantı İndirici
+AppVersion=1.0
+DefaultDirName={pf}\Baglanti-Indirici
+OutputBaseFilename=Baglanti-Indirici-Setup
+
+[Files]
+Source: "dist\Baglanti-Indirici.exe"; DestDir: "{app}"
+Source: "README.txt"; DestDir: "{app}"
+
+[Icons]
+Name: "{commonprograms}\Bağlantı İndirici"; Filename: "{app}\Baglanti-Indirici.exe"
+```
+
+### Güvenlik ve Antivir Uyarıları
+- PyInstaller ile oluşturulan exe dosyaları bazı antivirüs programları tarafından yanlış pozitif olarak algılanabilir
+- Bu durumda antivirüs programınızın beyaz listesine ekleyin
+- Dijital imza kullanarak güvenilirlik artırabilirsiniz
+
+### Performans Optimizasyonu
+```bash
+# UPX sıkıştırma ile dosya boyutunu küçültme
+pip install upx-ucl
+pyinstaller --onefile --noconsole --upx-dir=/path/to/upx main.py
+
+# Lazy imports ile başlatma hızını artırma
+pyinstaller --onefile --noconsole --runtime-hook=runtime_hooks/lazy_imports.py main.py
+```
+
 ## 🔧 Yapılandırma
 
 ### FFmpeg Yolu Ayarlama
@@ -143,6 +340,8 @@ ffmpeg_path = r'C:\ffmpeg\bin\ffmpeg.exe'
 
 # macOS/Linux için (genellikle PATH'de)
 ffmpeg_path = 'ffmpeg'
+
+yaralanabileceginiz youtube linki = https://www.youtube.com/watch?v=KBnyOH1o5Ms
 ```
 
 ### Video Kalite Ayarları
@@ -278,31 +477,21 @@ Uygulama, detaylı log mesajları sağlar:
 - Türkçe ve İngilizce yorumlar ekleyin
 - Docstring'leri güncel tutun
 - Type hint'leri kullanın
+  
 
 ## 📝 Değişiklik Günlüğü
 
-### v1.0.0 (12/08/2025)
+### v1.0.0 (2024-01-01)
 - ✅ İlk sürüm yayınlandı
 - ✅ YouTube, TikTok, Instagram desteği
 - ✅ Video/Ses indirme seçenekleri
 - ✅ Modern PyQt5 arayüzü
-
-
-## 📄 Lisans
-
-Bu proje MIT Lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakınız.
 
 ## 🙏 Teşekkürler
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) - Güçlü indirme motoru
 - [PyQt5](https://www.riverbankcomputing.com/software/pyqt/) - Modern GUI framework
 - [FFmpeg](https://ffmpeg.org/) - Multimedya işleme
-
-## 📞 İletişim
-
-- **GitHub Issues**: Hata raporları ve özellik istekleri için
-- **Email**: yusufygc118@gmail.com
-
 
 ## ⭐ Projeyi Beğendiyseniz
 
