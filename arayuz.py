@@ -4,7 +4,8 @@ import os
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QLineEdit, QPushButton, QFileDialog,
                              QTextEdit, QProgressBar, QRadioButton)
-from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtCore import Qt, pyqtSlot, QUrl
+from PyQt5.QtGui import QDesktopServices
 from indirici import Indirici
 
 class UygulamaArayuzu(QWidget):
@@ -40,10 +41,15 @@ class UygulamaArayuzu(QWidget):
         self.dizin_display = QLabel(self.indirme_dizini)
         self.dizin_sec_button = QPushButton("Dizin Seç")
         self.dizin_sec_button.clicked.connect(self.dizin_sec)
+        
+        # Yeni eklenen buton
+        self.dizin_ac_button = QPushButton("Klasörü Aç")
+        self.dizin_ac_button.clicked.connect(self.klasoru_ac)
 
         dizin_layout.addWidget(self.dizin_label)
         dizin_layout.addWidget(self.dizin_display)
         dizin_layout.addWidget(self.dizin_sec_button)
+        dizin_layout.addWidget(self.dizin_ac_button) # Butonu ekle
 
         main_layout.addLayout(dizin_layout)
         
@@ -112,6 +118,15 @@ class UygulamaArayuzu(QWidget):
             self.indirme_dizini = yeni_dizin
             self.dizin_display.setText(self.indirme_dizini)
             self.log_display.append(f"<b>Dizin güncellendi:</b> {self.indirme_dizini}")
+
+    def klasoru_ac(self):
+        """
+        İndirme dizinini dosya gezgininde açar.
+        """
+        if os.path.exists(self.indirme_dizini):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(self.indirme_dizini))
+        else:
+            self.log_display.append(f"<span style='color:red;'>Hata: Dizin bulunamadı - {self.indirme_dizini}</span>")
 
     def indirmeyi_baslat(self):
         """
