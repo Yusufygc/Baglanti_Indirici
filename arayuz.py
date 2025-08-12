@@ -19,10 +19,11 @@ class UygulamaArayuzu(QWidget):
         self.indirici_thread = None
 
         self.arayuzu_olustur()
+        self.stilleri_uygula()
 
     def arayuzu_olustur(self):
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(10)
+        main_layout.setSpacing(15)
         main_layout.setAlignment(Qt.AlignTop)
 
         # 1. URL Giriş Alanı
@@ -39,17 +40,17 @@ class UygulamaArayuzu(QWidget):
         dizin_layout = QHBoxLayout()
         self.dizin_label = QLabel("Hedef Dizin:")
         self.dizin_display = QLabel(self.indirme_dizini)
-        self.dizin_sec_button = QPushButton("Dizin Seç")
+        self.dizin_sec_button = QPushButton("Dizin Seç 📂")
         self.dizin_sec_button.clicked.connect(self.dizin_sec)
         
         # Yeni eklenen buton
-        self.dizin_ac_button = QPushButton("Klasörü Aç")
+        self.dizin_ac_button = QPushButton("Klasörü Aç 📁")
         self.dizin_ac_button.clicked.connect(self.klasoru_ac)
 
         dizin_layout.addWidget(self.dizin_label)
         dizin_layout.addWidget(self.dizin_display)
         dizin_layout.addWidget(self.dizin_sec_button)
-        dizin_layout.addWidget(self.dizin_ac_button) # Butonu ekle
+        dizin_layout.addWidget(self.dizin_ac_button)
 
         main_layout.addLayout(dizin_layout)
         
@@ -66,26 +67,26 @@ class UygulamaArayuzu(QWidget):
         # 4. İndirme Seçenekleri (Video/Ses)
         secenek_layout = QHBoxLayout()
         secenek_label = QLabel("İndirme Formatı:")
-        self.video_secenegi = QRadioButton("Video")
+        self.video_secenegi = QRadioButton("Video 🎥")
         self.video_secenegi.setChecked(True)  # Varsayılan olarak video seçili
-        self.ses_secenegi = QRadioButton("Ses")
+        self.ses_secenegi = QRadioButton("Ses 🎵")
         
         secenek_layout.addWidget(secenek_label)
         secenek_layout.addWidget(self.video_secenegi)
         secenek_layout.addWidget(self.ses_secenegi)
-        secenek_layout.addStretch() # Düğmeleri sola yasla
+        secenek_layout.addStretch()
 
         main_layout.addLayout(secenek_layout)
 
         # 5. İşlem Butonları
         buton_layout = QHBoxLayout()
-        self.indir_button = QPushButton("İndir")
-        self.indir_button.setFixedSize(100, 40)
+        self.indir_button = QPushButton("İndir 📥")
+        self.indir_button.setFixedSize(120, 45)
         self.indir_button.clicked.connect(self.indirmeyi_baslat)
         
-        self.iptal_button = QPushButton("İptal Et")
-        self.iptal_button.setFixedSize(100, 40)
-        self.iptal_button.setEnabled(False)  # Başlangıçta devre dışı
+        self.iptal_button = QPushButton("İptal Et ❌")
+        self.iptal_button.setFixedSize(120, 45)
+        self.iptal_button.setEnabled(False)
         self.iptal_button.clicked.connect(self.indirmeyi_iptal_et)
 
         buton_layout.addStretch()
@@ -108,6 +109,97 @@ class UygulamaArayuzu(QWidget):
         main_layout.addWidget(self.progress_bar)
 
         self.setLayout(main_layout)
+
+    def stilleri_uygula(self):
+        """
+        Uygulama arayüzüne modern ve şık bir görünüm kazandırmak için
+        CSS benzeri stilleri (QSS) uygular.
+        """
+        style_sheet = """
+            QWidget {
+                /* Ana arayüzün arka plan rengi */
+                background-color: #004d40;
+                color: #e0e0e0;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+            }
+            
+            QLabel {
+                color: #ffffff;
+            }
+
+            QLineEdit, QTextEdit {
+                /* Giriş alanlarının ve log ekranının arka plan rengi */
+                background-color: #1d1d2b;
+                border: 1px solid #5a5a75;
+                border-radius: 8px;
+                padding: 8px;
+                color: #ffffff;
+            }
+            
+            QLineEdit:focus, QTextEdit:focus {
+                border: 1px solid #00796b; /* Odaklandığında kenarlık rengi */
+            }
+
+            QPushButton {
+                /* Butonların arka plan rengi */
+                background-color: #4caf50;
+                border: none;
+                border-radius: 12px;
+                padding: 10px 20px;
+                color: #ffffff;
+                font-weight: bold;
+                transition: background-color 0.3s;
+            }
+
+            QPushButton:hover {
+                background-color: #66bb6a;
+            }
+            
+            QPushButton:pressed {
+                background-color: #388e3c;
+            }
+            
+            QPushButton:disabled {
+                background-color: #5a5a75;
+                color: #b0b0b0;
+            }
+
+            QRadioButton {
+                color: #ffffff;
+            }
+            
+            QRadioButton::indicator {
+                width: 15px;
+                height: 15px;
+                border-radius: 7px;
+            }
+            
+            QRadioButton::indicator:unchecked {
+                background-color: #5a5a75;
+                border: 1px solid #7c7c9a;
+            }
+            
+            QRadioButton::indicator:checked {
+                background-color: #4caf50; /* Seçili radyo buton rengi */
+                border: 2px solid #ffffff;
+            }
+            
+            QProgressBar {
+                border: 1px solid #5a5a75;
+                border-radius: 8px;
+                text-align: center;
+                color: #ffffff;
+                background-color: #1d1d2b;
+            }
+
+            QProgressBar::chunk {
+                background-color: #4caf50; /* İlerleme çubuğu rengi */
+                border-radius: 7px;
+                margin: 1px;
+            }
+        """
+        self.setStyleSheet(style_sheet)
 
     def dizin_sec(self):
         """
@@ -160,7 +252,7 @@ class UygulamaArayuzu(QWidget):
         self.indirici_thread.sinyaller.indirme_basladi.connect(self.indirme_basladi_guncelle)
         self.indirici_thread.sinyaller.ilerleme_guncellendi.connect(self.ilerleme_guncelle)
         self.indirici_thread.sinyaller.indirme_bitti.connect(self.indirme_tamamlandi)
-        self.indirici_thread.sinyaller.iptal_edildi.connect(self.indirme_iptal_edildi) # Yeni sinyal
+        self.indirici_thread.sinyaller.iptal_edildi.connect(self.indirme_iptal_edildi)
         self.indirici_thread.sinyaller.hata_olustu.connect(self.indirme_hatasi)
 
         self.indirici_thread.start()
@@ -197,7 +289,7 @@ class UygulamaArayuzu(QWidget):
         self.log_display.append("<span style='color:green;'><b>İndirme işlemi başarıyla tamamlandı!</b></span>")
         self.progress_bar.hide()
         self.indir_button.setEnabled(True)
-        self.iptal_button.setEnabled(False) # İndirme bittiğinde iptal butonunu devre dışı bırak
+        self.iptal_button.setEnabled(False)
         self.indirici_thread = None
         self.url_entry.clear()
         self.dosya_adi_entry.clear()
@@ -207,7 +299,7 @@ class UygulamaArayuzu(QWidget):
         self.log_display.append("<span style='color:orange;'><b>İndirme işlemi iptal edildi. Uygulama yeni indirme için hazır.</b></span>")
         self.progress_bar.hide()
         self.indir_button.setEnabled(True)
-        self.iptal_button.setEnabled(False) # İndirme iptal edildiğinde iptal butonunu devre dışı bırak
+        self.iptal_button.setEnabled(False)
         self.indirici_thread = None
         self.url_entry.clear()
         self.dosya_adi_entry.clear()
@@ -217,7 +309,7 @@ class UygulamaArayuzu(QWidget):
         self.log_display.append(f"<span style='color:red;'><b>Hata:</b> {hata_mesaji}</span>")
         self.progress_bar.hide()
         self.indir_button.setEnabled(True)
-        self.iptal_button.setEnabled(False) # Hata oluştuğunda iptal butonunu devre dışı bırak
+        self.iptal_button.setEnabled(False)
         self.indirici_thread = None
         self.url_entry.clear()
         self.dosya_adi_entry.clear()
