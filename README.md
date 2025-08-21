@@ -8,6 +8,9 @@ Modern ve kullanıcı dostu bir PyQt5 tabanlı video/ses indirici uygulaması. Y
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 
 ## 🌟 Özellikler
+Uygulamanın modern ve kullanıcı dostu arayüzü:
+
+![Baglanti Indirici Arayüzü](https://github.com/Yusufygc/Baglanti_Indirici/blob/main/icons/ss.png)
 
 ### 🎯 Temel Özellikler
 - **Çoklu Platform Desteği**: YouTube, TikTok, Instagram, Facebook, X (Twitter)
