@@ -77,7 +77,8 @@ class Indirici(QThread):
             if self.secenek == "video":
                 ydl_opts = {
                     'outtmpl': outtmpl_template,
-                    'format': 'bestvideo+bestaudio/best',  # En iyi formatı otomatik olarak seçer ve indirir.
+                    # Daha uyumlu ve esnek bir format seçeneği kullanıldı.
+                    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
                     'merge_output_format': 'mp4',
                     'ffmpeg_location': ffmpeg_path,
                     'progress_hooks': [self.ilerleme_hook],
