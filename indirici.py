@@ -76,10 +76,20 @@ class Indirici(QThread):
                     outtmpl_template = os.path.join(hedef_klasor, '%(title)s_audio.%(ext)s')
             
             if self.secenek == "video":
+                # Platforma göre en uygun video formatını belirle
+                if platform == "YouTube":
+                    # YouTube için ayrı akışları birleştiren gelişmiş format
+                    video_format = 'best[ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best'
+                else:
+                    # DİĞER TÜM PLATFORMLAR İÇİN DAHA AKILLI BİR VARSAYILAN FORMAT
+                    # 1. Önce birleştirilmiş en iyi MP4'ü dene (Pinterest/Instagram için ideal).
+                    # 2. Olmazsa, en iyi video ve sesi birleştirmeyi dene (Twitter için ideal).
+                    # 3. O da olmazsa, mevcut olan en iyi formatı al.
+                    video_format = 'best[ext=mp4]/bestvideo+bestaudio/best'
+
                 ydl_opts = {
                     'outtmpl': outtmpl_template,
-                    # Daha uyumlu ve esnek bir format seçeneği kullanıldı.
-                    'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                    'format': video_format,
                     'merge_output_format': 'mp4',
                     'ffmpeg_location': ffmpeg_path,
                     'progress_hooks': [self.ilerleme_hook],
