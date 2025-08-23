@@ -210,7 +210,7 @@ dir Baglanti-Indirici.exe
 ```
 
 ### Yaygın Build Sorunları ve Çözümleri
-
+#### Platformların özellikleri değiştiği için en önce `pip install --upgrade yt-dlp` ile kütüphaneyi güncellemekte fayda var
 #### 1. ModuleNotFoundError
 ```
 ModuleNotFoundError: No module named 'PyQt5'
