@@ -3,6 +3,7 @@ import os
 import urllib.parse
 from PyQt5.QtCore import QObject, pyqtSignal, QThread
 import yt_dlp
+import sys
 
 class IndiriciSinyalleri(QObject):
     """
@@ -62,7 +63,7 @@ class Indirici(QThread):
 
             # --- FFmpeg YOLU AYARI ---
             ffmpeg_path = r'C:\ffmpeg\bin\ffmpeg.exe'
-            
+
             if self.dosya_adi:
                 if self.secenek == "video":
                     outtmpl_template = os.path.join(hedef_klasor, f'{self.dosya_adi}_video.%(ext)s')
