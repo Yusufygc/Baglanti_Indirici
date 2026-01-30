@@ -10,7 +10,7 @@ Modern ve kullanıcı dostu bir PyQt5 tabanlı video/ses indirici uygulaması. Y
 ## 🌟 Özellikler
 Uygulamanın modern ve kullanıcı dostu arayüzü:
 
-![Baglanti Indirici Arayüzü](https://github.com/Yusufygc/Baglanti_Indirici/blob/main/icons/ss.png)
+![Baglanti Indirici Arayüzü](https://github.com/Yusufygc/Baglanti_Indirici/blob/main/icons/image.png)
 
 ### 🎯 Temel Özellikler
 - **Çoklu Platform Desteği**: YouTube, TikTok, Instagram, Facebook, X (Twitter)
