@@ -23,6 +23,12 @@ def get_ffmpeg_path():
     """
     base_path = get_base_path()
     
+    # 0. PyInstaller Bundle (_MEIPASS) kontrolü
+    if hasattr(sys, '_MEIPASS'):
+        bundled_path = os.path.join(sys._MEIPASS, 'ffmpeg.exe')
+        if os.path.exists(bundled_path):
+            return bundled_path
+
     # 1. Base path kontrolü (exe yanı veya proje root)
     possible_path = os.path.join(base_path, 'ffmpeg.exe')
     if os.path.exists(possible_path):
