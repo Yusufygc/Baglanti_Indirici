@@ -1,10 +1,18 @@
-# main.py
 import sys
 from PyQt5.QtWidgets import QApplication
-from arayuz import UygulamaArayuzu
+from ui.main_window import MainWindow
+
+def main():
+    """
+    Uygulama giriş noktası.
+    """
+    app = QApplication(sys.argv)
+    
+    # Ana pencereyi oluştur ve göster
+    window = MainWindow()
+    window.show()
+    
+    sys.exit(app.exec_())
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    pencere = UygulamaArayuzu()
-    pencere.show()
-    sys.exit(app.exec_())
+    main()
