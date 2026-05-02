@@ -43,7 +43,7 @@ Uygulamanın modern ve kullanıcı dostu arayüzü:
 
 ### 1. Depoyu Klonlayın
 ```bash
-git clone https://github.com/yourusername/baglanti-indirici.git
+git clone https://github.com/Yusufygc/baglanti-indirici.git
 cd baglanti-indirici
 ```
 
