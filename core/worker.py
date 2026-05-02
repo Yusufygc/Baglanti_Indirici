@@ -1,7 +1,10 @@
 import os
+import re
 import yt_dlp
 from PyQt5.QtCore import QObject, pyqtSignal, QThread
 from .utils import PlatformHelper
+
+ANSI_ESCAPE_RE = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
 
 class WorkerSignals(QObject):
     """
@@ -18,7 +21,7 @@ class WorkerSignals(QObject):
 class DownloadWorker(QThread):
     def __init__(self, url, download_dir, mode='video', filename=None, is_playlist=False):
         super().__init__()
-        self.url = url
+        self.url = PlatformHelper.normalize_url(url)
         self.download_dir = download_dir
         self.mode = mode # 'video' or 'ses'
         self.filename = filename
@@ -143,14 +146,26 @@ class DownloadWorker(QThread):
                 eta = d.get('eta', 0)
                 if eta: eta_str = f"{eta}s"
 
+            speed_str = self._clean_terminal_text(speed_str)
+            eta_str = self._clean_terminal_text(eta_str)
+
             # Playlist bilgisi ekle
             info = d.get('info_dict', {})
             p_index = info.get('playlist_index')
             p_count = info.get('n_entries')
-            playlist_info = f" (Video {p_index}/{p_count})" if p_index and p_count else ""
+            playlist_info = f" • Video {p_index}/{p_count}" if p_index and p_count else ""
 
-            status_msg = f"Hız: {speed_str}, Kalan: {eta_str}{playlist_info}"
+            status_msg = f"Hız: {speed_str} • Kalan: {eta_str}{playlist_info}"
             self.signals.progress.emit(percentage, status_msg)
             
         elif d['status'] == 'finished':
-            self.signals.progress.emit(100, "İşleniyor...")
+            self.signals.progress.emit(100, "İşleniyor…")
+
+    @staticmethod
+    def _clean_terminal_text(value):
+        """yt-dlp'nin renkli terminal çıktılarındaki ANSI kodlarını arayüzden temizle."""
+        if value is None:
+            return "Bilinmiyor"
+        text = str(value)
+        text = ANSI_ESCAPE_RE.sub('', text)
+        return " ".join(text.split()) or "Bilinmiyor"

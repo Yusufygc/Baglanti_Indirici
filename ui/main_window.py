@@ -1,336 +1,493 @@
-import sys
 import os
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                             QFileDialog, QProgressBar, 
-                             QRadioButton, QButtonGroup, QFrame, QCheckBox)
+import sys
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QFileDialog, QProgressBar, QFrame, QScrollArea
+)
 from PyQt5.QtCore import Qt, pyqtSlot, QUrl
-from PyQt5.QtGui import QDesktopServices, QIcon
+from PyQt5.QtGui import QDesktopServices, QColor
 
-# Modüler importlar
 from ui.styles import StyleManager
-from ui.components import ModernCard, HeaderLabel, ModernButton, ModernInput
+from ui.components import ModernCard, HeaderLabel, ModernButton, ModernInput, SegmentControl
+from ui.icons import IconManager
+from core.utils import PlatformHelper
 from core.worker import DownloadWorker
+
+
+# Platform adı → vurgu rengi (hex)
+_PLATFORM_COLORS: dict[str, str] = {
+    'YouTube':    '#FF4444',
+    'TikTok':     '#69C9D0',
+    'Instagram':  '#E1306C',
+    'Twitter':    '#1D9BF0',
+    'X (Twitter)': '#1D9BF0',
+    'Facebook':   '#1877F2',
+    'Twitch':     '#9146FF',
+    'SoundCloud': '#FF5500',
+    'Pinterest':  '#E60023',
+    'Web':        '#8B91A7',
+}
+
 
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Bağlantı İndirici")
-        self.setWindowIcon(QIcon("icons/icon.ico"))
-        self.setGeometry(200, 100, 650, 735)
-        self.setMinimumSize(600, 725)
+        self.setWindowIcon(IconManager.app_icon())
+        self.setGeometry(200, 80, 620, 720)
+        self.setMinimumSize(580, 680)
 
-        # Durum Değişkenleri
         self.download_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
         self.worker = None
 
-        # Arayüzü Kur
         self._init_ui()
-        
-        # Stilleri Uygula
         self.setStyleSheet(StyleManager.get_main_stylesheet())
 
-    def _init_ui(self):
-        """UI bileşenlerini oluşturur ve yerleştirir."""
-        main_layout = QVBoxLayout()
-        main_layout.setSpacing(15)
-        main_layout.setContentsMargins(0, 0, 0, 0) # Ana layout marginsiz, padding'i içerde vereceğiz.
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._apply_dark_title_bar()
 
-        # Ana Layout (Scroll Area İçinde Olacak)
+    def _apply_dark_title_bar(self) -> None:
+        if not sys.platform.startswith("win"):
+            return
+        try:
+            import ctypes
+            hwnd = int(self.winId())
+            value = ctypes.c_int(1)
+            for attribute in (20, 19):
+                result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd,
+                    attribute,
+                    ctypes.byref(value),
+                    ctypes.sizeof(value),
+                )
+                if result == 0:
+                    break
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------------ #
+    #  LAYOUT KURULUMU
+    # ------------------------------------------------------------------ #
+
+    def _init_ui(self):
+        root = QVBoxLayout()
+        root.setSpacing(0)
+        root.setContentsMargins(0, 0, 0, 0)
+
         content_widget = QWidget()
         content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(30, 30, 30, 10)
-        content_layout.setSpacing(15) # Spacing biraz azaltıldı
+        content_layout.setContentsMargins(28, 28, 28, 16)
+        content_layout.setSpacing(16)
 
-        # 1. Başlık Alanı
-        header_layout = QVBoxLayout()
-        header_layout.addWidget(HeaderLabel("🔗 Bağlantı İndirici"))
-        header_layout.addWidget(HeaderLabel("YouTube, TikTok, Instagram ve daha fazlasından içerik indirin", subtitle=True))
-        content_layout.addLayout(header_layout)
-
-        # 2. URL Giriş Alanı
-        self.url_card = self._create_url_section()
-        content_layout.addWidget(self.url_card)
-
-        # 3. Ayarlar Alanı (Dizin + Dosya Adı + Format)
-        self.settings_card = self._create_settings_section()
-        content_layout.addWidget(self.settings_card)
-
-        # 4. Aksiyon Butonları
-        self.btn_layout = self._create_action_buttons()
-        content_layout.addLayout(self.btn_layout)
-
-        # 5. İlerleme Alanı (Minimalist)
+        content_layout.addLayout(self._create_header())
+        content_layout.addWidget(self._create_url_card())
+        content_layout.addWidget(self._create_settings_card())
+        content_layout.addLayout(self._create_action_buttons())
         self.progress_container = self._create_progress_section()
         content_layout.addWidget(self.progress_container)
-        
-        content_layout.addStretch() # İçeriği yukarı iter
+        content_layout.addStretch()
 
-        # Scroll Area Ekleme (Taşmaları Önlemek İçin)
-        from PyQt5.QtWidgets import QScrollArea
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setWidget(content_widget)
-        scroll_area.setFrameShape(QFrame.NoFrame) # Kenarlık yok
-        
-        # Scroll Area arka plan stilini düzelt (CSS ile çakışmaması için)
-        # StyleManager'da QScrollArea için transparent background verebiliriz ama burada inline verelim garanti olsun
-        scroll_area.setStyleSheet("QScrollArea { background-color: transparent; border: none; } QWidget#scrollContent { background-color: transparent; }")
-        content_widget.setObjectName("scrollContent") # CSS seçicisi için ID
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(content_widget)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet(
+            "QScrollArea { background: transparent; border: none; }"
+            "QWidget#scrollContent { background: transparent; }"
+        )
+        content_widget.setObjectName("scrollContent")
 
-        main_layout.addWidget(scroll_area)
+        root.addWidget(scroll)
+        root.addWidget(self._create_status_bar())
+        self.setLayout(root)
 
-        # 6. Status Bar (En Altta)
-        self.status_bar = self._create_status_bar()
-        main_layout.addWidget(self.status_bar)
+    def _create_header(self) -> QVBoxLayout:
+        layout = QVBoxLayout()
+        layout.setSpacing(4)
+        layout.addWidget(HeaderLabel("Bağlantı İndirici"))
+        layout.addWidget(HeaderLabel("YouTube, TikTok, Instagram ve daha fazlasından içerik indirin", subtitle=True))
+        return layout
 
-        self.setLayout(main_layout)
+    # -- URL KARTI ---------------------------------------------------- #
 
-    def _create_url_section(self):
+    def _create_url_card(self) -> ModernCard:
         card = ModernCard()
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(20, 20, 20, 20)
-        
-        header = QLabel("🌐 Bağlantı")
-        header.setObjectName("cardHeader")
-        
-        self.url_input = ModernInput(placeholder="İndirmek istediğiniz bağlantıyı yapıştırın...")
-        
-        layout.addWidget(header)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(8)
+
+        # Etiket + platform rozeti satırı
+        row = QHBoxLayout()
+        lbl = QLabel("BAĞLANTI")
+        lbl.setObjectName("formLabel")
+        self.platform_badge = QLabel()
+        self.platform_badge.setObjectName("platformBadge")
+        self.platform_badge.setFixedHeight(20)
+        self.platform_badge.hide()
+        row.addWidget(lbl)
+        row.addStretch()
+        row.addWidget(self.platform_badge)
+        layout.addLayout(row)
+
+        self.url_input = ModernInput(placeholder="URL yapıştırın…")
+        self.url_input.textChanged.connect(self._on_url_changed)
         layout.addWidget(self.url_input)
+
+        self.lbl_url_feedback = QLabel("")
+        self.lbl_url_feedback.setObjectName("helperText")
+        self.lbl_url_feedback.hide()
+        layout.addWidget(self.lbl_url_feedback)
+
         return card
 
-    def _create_settings_section(self):
+    # -- AYARLAR KARTI ------------------------------------------------- #
+
+    def _create_settings_card(self) -> ModernCard:
         card = ModernCard()
         layout = QVBoxLayout(card)
-        layout.setSpacing(15)
-        layout.setContentsMargins(20, 20, 20, 20)
-        
-        # Başlık
-        header = QLabel("⚙️ Ayarlar")
-        header.setObjectName("cardHeader")
-        layout.addWidget(header)
-        
-        # Dizin Seçici
-        dizin_layout = QHBoxLayout()
-        self.path_input = ModernInput(self.download_dir, read_only=True)
-        
-        btn_select = ModernButton("📁 Seç", "secondary", self._select_directory)
-        btn_open = ModernButton("📂 Aç", "secondary", self._open_directory)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(6)
 
-        dizin_layout.addWidget(self.path_input, stretch=1)
-        dizin_layout.addWidget(btn_select)
-        dizin_layout.addWidget(btn_open)
-        layout.addLayout(dizin_layout)
+        # Kayıt Konumu
+        lbl_path = QLabel("KAYIT KONUMU")
+        lbl_path.setObjectName("formLabel")
+        layout.addWidget(lbl_path)
+
+        path_row = QHBoxLayout()
+        path_row.setSpacing(8)
+        self.path_input = ModernInput(self.download_dir, read_only=True)
+        btn_select = ModernButton("Seç", "secondary", self._select_directory,
+                                  icon=IconManager.get('folder'))
+        btn_open = ModernButton("Aç", "secondary", self._open_directory,
+                                icon=IconManager.get('folder_open'))
+        path_row.addWidget(self.path_input, stretch=1)
+        path_row.addWidget(btn_select)
+        path_row.addWidget(btn_open)
+        layout.addLayout(path_row)
+
+        layout.addSpacing(12)
 
         # Dosya Adı
-        name_layout = QHBoxLayout()
-        lbl_name = QLabel("📝 Dosya Adı:")
-        lbl_name.setObjectName("inputLabel")
-        self.filename_input = ModernInput("Orijinal isim için boş bırakın...")
-        
-        name_layout.addWidget(lbl_name)
-        name_layout.addWidget(self.filename_input, stretch=1)
-        layout.addLayout(name_layout)
+        lbl_name = QLabel("DOSYA ADI")
+        lbl_name.setObjectName("formLabel")
+        layout.addWidget(lbl_name)
 
-        # Format Seçimi
-        fmt_layout = QHBoxLayout()
-        lbl_fmt = QLabel("🎬 Format:")
-        lbl_fmt.setObjectName("inputLabel")
-        
-        self.rb_video = QRadioButton("🎥 Video")
-        self.rb_video.setChecked(True)
-        self.rb_video.setCursor(Qt.PointingHandCursor)
-        
-        self.rb_audio = QRadioButton("🎵 Ses (MP3)")
-        self.rb_audio.setCursor(Qt.PointingHandCursor)
-        
-        self.fmt_group = QButtonGroup()
-        self.fmt_group.addButton(self.rb_video)
-        self.fmt_group.addButton(self.rb_audio)
-        
-        fmt_layout.addWidget(lbl_fmt)
-        fmt_layout.addWidget(self.rb_video)
-        fmt_layout.addWidget(self.rb_audio)
-        
-        self.chk_playlist = QCheckBox("Tüm Oynatma Listesini İndir")
-        self.chk_playlist.setCursor(Qt.PointingHandCursor)
-        self.chk_playlist.stateChanged.connect(self._on_playlist_toggled)
-        
-        fmt_layout.addWidget(self.chk_playlist)
-        fmt_layout.addStretch()
-        layout.addLayout(fmt_layout)
+        self.filename_input = ModernInput("Varsayılan dosya adı kullanılacak")
+        layout.addWidget(self.filename_input)
+
+        lbl_helper = QLabel("Boş bırakırsanız orijinal ad kullanılır.")
+        lbl_helper.setObjectName("helperText")
+        layout.addWidget(lbl_helper)
+
+        layout.addSpacing(12)
+
+        # Format Segment
+        lbl_fmt = QLabel("FORMAT")
+        lbl_fmt.setObjectName("formLabel")
+        layout.addWidget(lbl_fmt)
+
+        self.format_segment = SegmentControl([
+            ("Video",      "video"),
+            ("Ses (MP3)",  "ses"),
+            ("Playlist",   "playlist"),
+        ])
+        self.format_segment.selectionChanged.connect(self._on_format_changed)
+        layout.addWidget(self.format_segment)
 
         return card
 
-    def _create_action_buttons(self):
+    # -- AKSİYON BUTONLARI --------------------------------------------- #
+
+    def _create_action_buttons(self) -> QHBoxLayout:
         layout = QHBoxLayout()
-        layout.setSpacing(15)
-        
-        self.btn_download = ModernButton("⬇️ İndir", "primary", self._start_download)
-        self.btn_cancel = ModernButton("❌ İptal", "danger", self._cancel_download)
-        self.btn_cancel.setEnabled(False)
-        
+        layout.setSpacing(12)
+
+        self.btn_download = ModernButton("İndir", "primary", self._start_download,
+                                         icon=IconManager.get('download'))
+        self.btn_download.setEnabled(False)  # URL boşken disabled
+
+        self.btn_cancel = ModernButton("İptal", "danger", self._cancel_download,
+                                       icon=IconManager.get('cancel'))
+        self.btn_cancel.hide()
+
         layout.addStretch()
         layout.addWidget(self.btn_download)
         layout.addWidget(self.btn_cancel)
         layout.addStretch()
         return layout
 
-    def _create_progress_section(self):
-        """İlerleme çubuğunu içeren minimal container."""
+    # -- İLERLEME BÖLÜMÜ ----------------------------------------------- #
+
+    def _create_progress_section(self) -> QWidget:
         container = QWidget()
         layout = QVBoxLayout(container)
-        layout.setContentsMargins(0, 10, 0, 5)
-        
-        # Etiket ve Yüzde
-        info_layout = QHBoxLayout()
-        self.lbl_status = QLabel("Hazır") # İşlem durumu mesajı
-        self.lbl_status.setObjectName("statusLabel")
-        self.lbl_percent = QLabel("") # %45
-        self.lbl_percent.setObjectName("statusLabel")
-        
-        info_layout.addWidget(self.lbl_status)
-        info_layout.addStretch()
-        info_layout.addWidget(self.lbl_percent)
-        
-        layout.addLayout(info_layout)
-        
-        # Bar
+        layout.setContentsMargins(0, 8, 0, 0)
+        layout.setSpacing(6)
+
+        # Yüzde satırı
+        pct_row = QHBoxLayout()
+        self.lbl_progress_title = QLabel("İndiriliyor…")
+        self.lbl_progress_title.setObjectName("statusBarText")
+        self.lbl_percent = QLabel("")
+        self.lbl_percent.setObjectName("statusBarText")
+        self.lbl_percent.setAlignment(Qt.AlignRight)
+        pct_row.addWidget(self.lbl_progress_title)
+        pct_row.addStretch()
+        pct_row.addWidget(self.lbl_percent)
+        layout.addLayout(pct_row)
+
+        # Progress bar (ince)
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
-        self.progress_bar.setTextVisible(False) # Metin yukarıda
-        self.progress_bar.setFixedHeight(6) # İnce bar
-        
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setFixedHeight(6)
         layout.addWidget(self.progress_bar)
-        
-        # Detaylar (Hız, Süre) - Barın altında
+
+        # Hız / kalan süre
         self.lbl_details = QLabel("")
         self.lbl_details.setObjectName("detailLabel")
         self.lbl_details.setAlignment(Qt.AlignCenter)
+        self.lbl_details.setWordWrap(True)
         layout.addWidget(self.lbl_details)
-        
-        container.hide() # Başlangıçta gizli
+
+        self.success_actions = QWidget()
+        success_layout = QHBoxLayout(self.success_actions)
+        success_layout.setContentsMargins(0, 8, 0, 0)
+        success_layout.setSpacing(10)
+
+        self.btn_show_folder = ModernButton("Klasörde Göster", "primary", self._open_directory,
+                                            icon=IconManager.get('folder_open'))
+        self.btn_new_download = ModernButton("Yeni İndirme", "secondary", self._prepare_new_download)
+
+        success_layout.addStretch()
+        success_layout.addWidget(self.btn_show_folder)
+        success_layout.addWidget(self.btn_new_download)
+        success_layout.addStretch()
+
+        self.success_actions.hide()
+        layout.addWidget(self.success_actions)
+
+        container.hide()
         return container
 
-    def _create_status_bar(self):
-        """Footer yerine geçen status bar."""
-        container = QFrame()
-        container.setObjectName("statusBar")
-        layout = QHBoxLayout(container)
-        layout.setContentsMargins(15, 8, 15, 8)
-        
-        lbl_info = QLabel("v1.0.0 • Yüksek Performanslı İndirici")
-        lbl_info.setObjectName("footerText")
-        
-        layout.addWidget(lbl_info)
+    # -- STATUS BAR ---------------------------------------------------- #
+
+    def _create_status_bar(self) -> QFrame:
+        bar = QFrame()
+        bar.setObjectName("statusBar")
+        layout = QHBoxLayout(bar)
+        layout.setContentsMargins(16, 0, 16, 0)
+
+        self.lbl_status_bar = QLabel("Hazır")
+        self.lbl_status_bar.setObjectName("statusBarText")
+
+        lbl_ver = QLabel("v1.0.0")
+        lbl_ver.setObjectName("footerText")
+
+        layout.addWidget(self.lbl_status_bar)
         layout.addStretch()
-        
-        return container
+        layout.addWidget(lbl_ver)
+        return bar
 
-    # --- İŞ MANTIĞI VE EVENT HANDLERLAR ---
+    # ------------------------------------------------------------------ #
+    #  PLATFORM ALGILAMA
+    # ------------------------------------------------------------------ #
 
-    @pyqtSlot(int)
-    def _on_playlist_toggled(self, state):
-        if state == Qt.Checked:
-            self.filename_input.setEnabled(False)
-            self.filename_input.clear()
-            self.filename_input.setPlaceholderText("Playlist modu: Özel isim devredışı")
+    def _detect_platform(self, url: str) -> str:
+        platform = PlatformHelper.get_platform_name(url)
+        if platform in ("Bilinmeyen", "GecersizURL"):
+            return ""
+        return platform
+
+    def _update_platform_badge(self, platform: str) -> None:
+        if not platform:
+            self.platform_badge.hide()
+            return
+        color = _PLATFORM_COLORS.get(platform, '#8B91A7')
+        c = QColor(color)
+        bg  = f"rgba({c.red()},{c.green()},{c.blue()},38)"
+        bdr = f"rgba({c.red()},{c.green()},{c.blue()},90)"
+        self.platform_badge.setStyleSheet(
+            f"background-color:{bg}; color:{color}; border:1px solid {bdr};"
+            f"border-radius:4px; padding:1px 8px; font-size:11px; font-weight:700;"
+        )
+        self.platform_badge.setText(platform)
+        self.platform_badge.show()
+
+    # ------------------------------------------------------------------ #
+    #  EVENT HANDLER'LAR
+    # ------------------------------------------------------------------ #
+
+    @pyqtSlot(str)
+    def _on_url_changed(self, text: str) -> None:
+        stripped = text.strip()
+        platform = self._detect_platform(stripped) if stripped else ''
+        self._update_platform_badge(platform)
+        self.url_input.setToolTip(stripped)
+
+        if not stripped:
+            self.lbl_url_feedback.hide()
+            self._set_ready(False)
+            return
+
+        if platform:
+            self.lbl_url_feedback.hide()
+            self._set_ready(True)
         else:
-            self.filename_input.setEnabled(True)
-            self.filename_input.setPlaceholderText("Orijinal isim için boş bırakın...")
+            self.lbl_url_feedback.setText("Geçerli bir URL yapıştırın.")
+            self.lbl_url_feedback.setObjectName("errorText")
+            self.lbl_url_feedback.style().unpolish(self.lbl_url_feedback)
+            self.lbl_url_feedback.style().polish(self.lbl_url_feedback)
+            self.lbl_url_feedback.show()
+            self._set_ready(False)
 
-    def _update_status(self, message, is_error=False):
-        """Durum metnini günceller."""
-        self.lbl_status.setText(message)
-        if is_error:
-            self.lbl_status.setStyleSheet("color: #ff4757; font-weight: bold;")
+    @pyqtSlot(str)
+    def _on_format_changed(self, value: str) -> None:
+        is_playlist = (value == 'playlist')
+        self.filename_input.setEnabled(not is_playlist)
+        if is_playlist:
+            self.filename_input.setPlaceholderText("Playlist modunda kullanılamaz")
         else:
-            self.lbl_status.setStyleSheet("color: #00d4ff; font-weight: bold;")
+            self.filename_input.setPlaceholderText("Varsayılan dosya adı kullanılacak")
 
-    def _select_directory(self):
+    def _select_directory(self) -> None:
         new_dir = QFileDialog.getExistingDirectory(self, "İndirme Dizinini Seç", self.download_dir)
         if new_dir:
             self.download_dir = new_dir
             self.path_input.setText(self.download_dir)
 
-    def _open_directory(self):
+    def _open_directory(self) -> None:
         if os.path.exists(self.download_dir):
             QDesktopServices.openUrl(QUrl.fromLocalFile(self.download_dir))
 
-    def _start_download(self):
+    # ------------------------------------------------------------------ #
+    #  İNDİRME MANTIĞI
+    # ------------------------------------------------------------------ #
+
+    def _start_download(self) -> None:
         url = self.url_input.text().strip()
         if not url:
-            self.progress_container.show()
-            self._update_status("⚠️ Lütfen geçerli bir URL girin!", is_error=True)
             return
 
-        self.btn_download.setEnabled(False)
-        self.btn_cancel.setEnabled(True)
-        
-        # UI Hazırla
+        self._set_downloading()
+
         self.progress_container.show()
         self.progress_bar.setValue(0)
-        self.lbl_percent.setText("%0")
-        self.lbl_details.setText("Hazırlanıyor...")
-        self._update_status("Bağlantı analizi yapılıyor...", is_error=False)
+        self.lbl_percent.setText("0%")
+        self.lbl_details.setText("Hazırlanıyor…")
+        self.lbl_progress_title.setText("İndiriliyor…")
+        self._set_status("Bağlantı analiz ediliyor…")
 
-        mode = "video" if self.rb_video.isChecked() else "ses"
+        seg = self.format_segment.value()
+        if seg == 'playlist':
+            mode = 'video'
+            is_playlist = True
+        else:
+            mode = seg          # 'video' veya 'ses'
+            is_playlist = False
+
         filename = self.filename_input.text().strip() or None
-        is_playlist = self.chk_playlist.isChecked()
 
-        # Thread Başlatma
         self.worker = DownloadWorker(url, self.download_dir, mode, filename, is_playlist)
-        
-        # Sinyal Bağlantıları
-        self.worker.signals.platform_detected.connect(lambda p: self._update_status(f"Platform: {p}"))
-        self.worker.signals.folder_prepared.connect(lambda _: None) # Klasör bilgisi kullanıcıyı yormasın
-        self.worker.signals.started.connect(lambda m: self._update_status(m))
+        self.worker.signals.platform_detected.connect(
+            lambda p: self._set_status(f"Platform: {p}  •  İndiriliyor…")
+        )
+        self.worker.signals.started.connect(lambda m: self._set_status(m))
         self.worker.signals.progress.connect(self._update_progress)
         self.worker.signals.finished.connect(self._on_finished)
         self.worker.signals.cancelled.connect(self._on_cancelled)
         self.worker.signals.error.connect(self._on_error)
-        
+        self.worker.signals.folder_prepared.connect(lambda _: None)
         self.worker.start()
 
-    def _cancel_download(self):
+    def _cancel_download(self) -> None:
         if self.worker and self.worker.isRunning():
             self.worker.cancel()
-            self._update_status("🛑 İptal ediliyor...", is_error=True)
+            self._set_status("İptal ediliyor…", error=True)
+            self.btn_cancel.setEnabled(False)
+            self.btn_cancel.setText("İptal ediliyor…")
+
+    # -- Sinyal alıcılar ----------------------------------------------- #
 
     @pyqtSlot(int, str)
-    def _update_progress(self, percent, status_msg):
+    def _update_progress(self, percent: int, status_msg: str) -> None:
         self.progress_bar.setValue(percent)
-        self.lbl_percent.setText(f"%{percent}")
+        self.lbl_percent.setText(f"{percent}%")
         self.lbl_details.setText(status_msg)
-        
-        if percent < 100:
-             self.lbl_status.setText("İndiriliyor...")
-             self.lbl_status.setStyleSheet("color: #00d4ff; font-weight: bold;")
 
     @pyqtSlot()
-    def _on_finished(self):
+    def _on_finished(self) -> None:
         self.progress_bar.setValue(100)
-        self.lbl_percent.setText("%100")
-        self._update_status("✅ İndirme Tamamlandı!")
-        self.lbl_details.setText("Dosya klasöre kaydedildi.")
-        self._reset_ui_state()
+        self.lbl_percent.setText("100%")
+        self.lbl_progress_title.setText("Tamamlandı")
+        self.lbl_details.setText("Dosya başarıyla kaydedildi.")
+        self.success_actions.show()
+        self._set_status("✓  İndirme tamamlandı", error=False)
+        self._set_success()
 
     @pyqtSlot()
-    def _on_cancelled(self):
-        self._update_status("⛔ İndirme İptal Edildi", is_error=True)
-        self.lbl_details.setText("")
-        self._reset_ui_state()
+    def _on_cancelled(self) -> None:
+        self.lbl_progress_title.setText("İptal Edildi")
+        self.lbl_percent.setText("")
+        self.lbl_details.setText("İşlem kullanıcı tarafından durduruldu.")
+        self._set_status("İndirme iptal edildi.", error=True)
+        self._reset_controls()
 
     @pyqtSlot(str)
-    def _on_error(self, err_msg):
-        self.progress_container.show() # Hata oluşursa göster
-        self._update_status(f"Hata: {err_msg}", is_error=True)
-        self._reset_ui_state()
+    def _on_error(self, msg: str) -> None:
+        self.progress_container.show()
+        self.lbl_progress_title.setText("Hata")
+        self.lbl_percent.setText("")
+        self.lbl_details.setText(msg)
+        self._set_status(f"⚠  {msg}", error=True)
+        self._reset_controls()
 
-    def _reset_ui_state(self):
-        self.btn_download.setEnabled(True)
-        self.btn_cancel.setEnabled(False)
+    # -- Yardımcılar --------------------------------------------------- #
+
+    def _set_status(self, text: str, error: bool = False) -> None:
+        color = "#FF4757" if error else "#00d4ff"
+        self.lbl_status_bar.setText(text)
+        self.lbl_status_bar.setStyleSheet(
+            f"font-size:12px; font-weight:600; color:{color};"
+        )
+
+    def _set_ready(self, ready: bool) -> None:
+        if self.worker and self.worker.isRunning():
+            return
+        self.btn_download.setEnabled(ready)
+
+    def _is_url_ready(self) -> bool:
+        return bool(self._detect_platform(self.url_input.text().strip()))
+
+    def _set_downloading(self) -> None:
+        self.btn_download.setText("İndiriliyor…")
+        self.btn_download.setEnabled(False)
+        self.btn_cancel.setText("İptal")
+        self.btn_cancel.setEnabled(True)
+        self.btn_cancel.show()
+        self.success_actions.hide()
+
+    def _set_success(self) -> None:
+        self.btn_download.setText("İndir")
+        self.btn_download.hide()
+        self.btn_cancel.hide()
         self.worker = None
-        self.url_input.clear()
-        self.filename_input.clear()
-        # Bar gizlenmiyor, kullanıcı sonucu görsün
+
+    def _prepare_new_download(self) -> None:
+        self.progress_container.hide()
+        self.success_actions.hide()
+        self.progress_bar.setValue(0)
+        self.lbl_percent.setText("")
+        self.lbl_details.setText("")
+        self.btn_download.show()
+        self._set_ready(self._is_url_ready())
+        self._set_status("Hazır")
+
+    def _reset_controls(self) -> None:
+        self.btn_download.setText("İndir")
+        self.btn_download.show()
+        self.btn_cancel.setText("İptal")
+        self.btn_cancel.hide()
+        self._set_ready(self._is_url_ready())
+        self.worker = None

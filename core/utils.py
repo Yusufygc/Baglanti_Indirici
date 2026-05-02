@@ -6,10 +6,24 @@ class PlatformHelper:
     """
     
     @staticmethod
+    def normalize_url(url):
+        cleaned = (url or "").strip()
+        if not cleaned:
+            return cleaned
+        parsed_url = urllib.parse.urlparse(cleaned)
+        if not parsed_url.scheme and "." in cleaned.split("/")[0]:
+            return f"https://{cleaned}"
+        return cleaned
+
+    @staticmethod
     def get_platform_name(url):
         try:
-            parsed_url = urllib.parse.urlparse(url)
-            domain = parsed_url.netloc
+            normalized_url = PlatformHelper.normalize_url(url)
+            parsed_url = urllib.parse.urlparse(normalized_url)
+            domain = parsed_url.netloc.lower()
+
+            if not domain:
+                return "GecersizURL"
 
             if "pinterest.com" in domain or "pin.it" in domain:
                 return "Pinterest"
@@ -23,6 +37,8 @@ class PlatformHelper:
                 return "Facebook"
             elif "twitter.com" in domain or "x.com" in domain:
                 return "X (Twitter)"
+            elif parsed_url.scheme in ("http", "https"):
+                return "Web"
             else:
                 return "Bilinmeyen"
         except:

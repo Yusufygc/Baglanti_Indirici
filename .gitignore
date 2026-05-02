@@ -15,7 +15,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
+*.vscode/
 # Veritabanı dosyaları (eğer proje içinde oluşturuluyorsa)
 data/*.db
 *.db
