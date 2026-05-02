@@ -2,7 +2,7 @@ import sys
 import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QFileDialog, QProgressBar, 
-                             QRadioButton, QButtonGroup, QFrame)
+                             QRadioButton, QButtonGroup, QFrame, QCheckBox)
 from PyQt5.QtCore import Qt, pyqtSlot, QUrl
 from PyQt5.QtGui import QDesktopServices, QIcon
 
@@ -151,6 +151,12 @@ class MainWindow(QWidget):
         fmt_layout.addWidget(lbl_fmt)
         fmt_layout.addWidget(self.rb_video)
         fmt_layout.addWidget(self.rb_audio)
+        
+        self.chk_playlist = QCheckBox("Tüm Oynatma Listesini İndir")
+        self.chk_playlist.setCursor(Qt.PointingHandCursor)
+        self.chk_playlist.stateChanged.connect(self._on_playlist_toggled)
+        
+        fmt_layout.addWidget(self.chk_playlist)
         fmt_layout.addStretch()
         layout.addLayout(fmt_layout)
 
@@ -223,6 +229,16 @@ class MainWindow(QWidget):
 
     # --- İŞ MANTIĞI VE EVENT HANDLERLAR ---
 
+    @pyqtSlot(int)
+    def _on_playlist_toggled(self, state):
+        if state == Qt.Checked:
+            self.filename_input.setEnabled(False)
+            self.filename_input.clear()
+            self.filename_input.setPlaceholderText("Playlist modu: Özel isim devredışı")
+        else:
+            self.filename_input.setEnabled(True)
+            self.filename_input.setPlaceholderText("Orijinal isim için boş bırakın...")
+
     def _update_status(self, message, is_error=False):
         """Durum metnini günceller."""
         self.lbl_status.setText(message)
@@ -260,9 +276,10 @@ class MainWindow(QWidget):
 
         mode = "video" if self.rb_video.isChecked() else "ses"
         filename = self.filename_input.text().strip() or None
+        is_playlist = self.chk_playlist.isChecked()
 
         # Thread Başlatma
-        self.worker = DownloadWorker(url, self.download_dir, mode, filename)
+        self.worker = DownloadWorker(url, self.download_dir, mode, filename, is_playlist)
         
         # Sinyal Bağlantıları
         self.worker.signals.platform_detected.connect(lambda p: self._update_status(f"Platform: {p}"))

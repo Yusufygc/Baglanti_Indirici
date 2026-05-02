@@ -16,12 +16,13 @@ class WorkerSignals(QObject):
     error = pyqtSignal(str)               # hata_olustu
 
 class DownloadWorker(QThread):
-    def __init__(self, url, download_dir, mode='video', filename=None):
+    def __init__(self, url, download_dir, mode='video', filename=None, is_playlist=False):
         super().__init__()
         self.url = url
         self.download_dir = download_dir
         self.mode = mode # 'video' or 'ses'
         self.filename = filename
+        self.is_playlist = is_playlist
         self.signals = WorkerSignals()
         self._is_cancelled = False
         self._ydl = None
@@ -69,7 +70,13 @@ class DownloadWorker(QThread):
                 'ffmpeg_location': ffmpeg_path,
                 'progress_hooks': [self._progress_hook],
                 'quiet': True,
-                'no_warnings': True
+                'no_warnings': True,
+                'noplaylist': not self.is_playlist,
+                'ignoreerrors': True,            # Hata veren videoyu atla, seriye devam et
+                'sleep_interval_requests': 1,    # Sunucu istekleri arasına 1 sn bekleme
+                'sleep_interval': 2,             # Her indirme arası en az 2 sn bekle
+                'max_sleep_interval': 6,         # Bekleme süresini 2-6 sn arası rastgele yap
+                'retries': 10                    # Başarısızlık durumunda tekrar deneme sayısı
             })
 
             # 4. İndirme Başlat
@@ -103,7 +110,9 @@ class DownloadWorker(QThread):
         suffix = "video" if self.mode == "video" else "audio"
         ext = "%(ext)s"
         
-        if self.filename:
+        if self.is_playlist:
+            return os.path.join(target_dir, '%(playlist_title)s', f'%(playlist_index)02d - %(title)s_{suffix}.{ext}')
+        elif self.filename:
             return os.path.join(target_dir, f'{self.filename}_{suffix}.{ext}')
         else:
             return os.path.join(target_dir, f'%(title)s_{suffix}.{ext}')
@@ -134,7 +143,13 @@ class DownloadWorker(QThread):
                 eta = d.get('eta', 0)
                 if eta: eta_str = f"{eta}s"
 
-            status_msg = f"Hız: {speed_str}, Kalan: {eta_str}"
+            # Playlist bilgisi ekle
+            info = d.get('info_dict', {})
+            p_index = info.get('playlist_index')
+            p_count = info.get('n_entries')
+            playlist_info = f" (Video {p_index}/{p_count})" if p_index and p_count else ""
+
+            status_msg = f"Hız: {speed_str}, Kalan: {eta_str}{playlist_info}"
             self.signals.progress.emit(percentage, status_msg)
             
         elif d['status'] == 'finished':
