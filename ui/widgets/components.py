@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QFrame, QGraphicsDropShadowEffect, QLabel, QLineEdit, QPushButton, QHBoxLayout
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
-from PyQt5.QtGui import QColor, QIcon
+from PyQt5.QtGui import QColor, QIcon, QPalette
 
 
 class ModernCard(QFrame):
@@ -52,6 +52,9 @@ class ModernInput(QLineEdit):
     def __init__(self, placeholder="", read_only=False):
         super().__init__()
         self.setPlaceholderText(placeholder)
+        palette = self.palette()
+        palette.setColor(QPalette.PlaceholderText, QColor("#D7E6FA"))
+        self.setPalette(palette)
         if read_only:
             self.setReadOnly(True)
             self.setObjectName("pathDisplay")
