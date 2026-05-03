@@ -7,11 +7,12 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSlot, QUrl
 from PyQt5.QtGui import QDesktopServices, QColor
 
-from ui.styles import StyleManager
-from ui.components import ModernCard, HeaderLabel, ModernButton, ModernInput, SegmentControl
-from ui.icons import IconManager
+from ui.themeing.styles import StyleManager
+from ui.widgets.components import ModernCard, HeaderLabel, ModernButton, ModernInput, SegmentControl
+from ui.window.controller import MainWindowController
+from ui.assets.icons import IconManager
+from ui.window.view_state import DownloadViewState
 from core.utils import PlatformHelper
-from core.worker import DownloadWorker
 
 
 # Platform adı → vurgu rengi (hex)
@@ -38,7 +39,7 @@ class MainWindow(QWidget):
         self.setMinimumSize(580, 680)
 
         self.download_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
-        self.worker = None
+        self.controller = MainWindowController(self)
 
         self._init_ui()
         self.setStyleSheet(StyleManager.get_main_stylesheet())
@@ -159,11 +160,8 @@ class MainWindow(QWidget):
         self.path_input = ModernInput(self.download_dir, read_only=True)
         btn_select = ModernButton("Seç", "secondary", self._select_directory,
                                   icon=IconManager.get('folder'))
-        btn_open = ModernButton("Aç", "secondary", self._open_directory,
-                                icon=IconManager.get('folder_open'))
         path_row.addWidget(self.path_input, stretch=1)
         path_row.addWidget(btn_select)
-        path_row.addWidget(btn_open)
         layout.addLayout(path_row)
 
         layout.addSpacing(12)
@@ -377,7 +375,7 @@ class MainWindow(QWidget):
         self.lbl_percent.setText("0%")
         self.lbl_details.setText("Hazırlanıyor…")
         self.lbl_progress_title.setText("İndiriliyor…")
-        self._set_status("Bağlantı analiz ediliyor…")
+        self.set_status("Bağlantı analiz ediliyor…")
 
         seg = self.format_segment.value()
         if seg == 'playlist':
@@ -389,63 +387,54 @@ class MainWindow(QWidget):
 
         filename = self.filename_input.text().strip() or None
 
-        self.worker = DownloadWorker(url, self.download_dir, mode, filename, is_playlist)
-        self.worker.signals.platform_detected.connect(
-            lambda p: self._set_status(f"Platform: {p}  •  İndiriliyor…")
-        )
-        self.worker.signals.started.connect(lambda m: self._set_status(m))
-        self.worker.signals.progress.connect(self._update_progress)
-        self.worker.signals.finished.connect(self._on_finished)
-        self.worker.signals.cancelled.connect(self._on_cancelled)
-        self.worker.signals.error.connect(self._on_error)
-        self.worker.signals.folder_prepared.connect(lambda _: None)
-        self.worker.start()
+        self.controller.start_download(url, self.download_dir, mode, filename, is_playlist)
 
     def _cancel_download(self) -> None:
-        if self.worker and self.worker.isRunning():
-            self.worker.cancel()
-            self._set_status("İptal ediliyor…", error=True)
+        if self.controller.is_running():
+            self.controller.cancel_download()
             self.btn_cancel.setEnabled(False)
             self.btn_cancel.setText("İptal ediliyor…")
 
     # -- Sinyal alıcılar ----------------------------------------------- #
 
     @pyqtSlot(int, str)
-    def _update_progress(self, percent: int, status_msg: str) -> None:
+    def update_progress(self, percent: int, status_msg: str) -> None:
         self.progress_bar.setValue(percent)
         self.lbl_percent.setText(f"{percent}%")
         self.lbl_details.setText(status_msg)
 
     @pyqtSlot()
-    def _on_finished(self) -> None:
+    def handle_finished(self) -> None:
         self.progress_bar.setValue(100)
         self.lbl_percent.setText("100%")
         self.lbl_progress_title.setText("Tamamlandı")
         self.lbl_details.setText("Dosya başarıyla kaydedildi.")
         self.success_actions.show()
-        self._set_status("✓  İndirme tamamlandı", error=False)
+        self.set_status("✓  İndirme tamamlandı", error=False)
         self._set_success()
 
     @pyqtSlot()
-    def _on_cancelled(self) -> None:
+    def handle_cancelled(self) -> None:
         self.lbl_progress_title.setText("İptal Edildi")
         self.lbl_percent.setText("")
         self.lbl_details.setText("İşlem kullanıcı tarafından durduruldu.")
-        self._set_status("İndirme iptal edildi.", error=True)
+        self.set_status("İndirme iptal edildi.", error=True)
+        self._render_state(DownloadViewState.CANCELLED)
         self._reset_controls()
 
     @pyqtSlot(str)
-    def _on_error(self, msg: str) -> None:
+    def handle_error(self, msg: str) -> None:
         self.progress_container.show()
         self.lbl_progress_title.setText("Hata")
         self.lbl_percent.setText("")
         self.lbl_details.setText(msg)
-        self._set_status(f"⚠  {msg}", error=True)
+        self.set_status(f"⚠  {msg}", error=True)
+        self._render_state(DownloadViewState.ERROR)
         self._reset_controls()
 
     # -- Yardımcılar --------------------------------------------------- #
 
-    def _set_status(self, text: str, error: bool = False) -> None:
+    def set_status(self, text: str, error: bool = False) -> None:
         color = "#FF4757" if error else "#00d4ff"
         self.lbl_status_bar.setText(text)
         self.lbl_status_bar.setStyleSheet(
@@ -453,26 +442,19 @@ class MainWindow(QWidget):
         )
 
     def _set_ready(self, ready: bool) -> None:
-        if self.worker and self.worker.isRunning():
+        if self.controller.is_running():
             return
+        self._render_state(DownloadViewState.READY if ready else DownloadViewState.IDLE)
         self.btn_download.setEnabled(ready)
 
     def _is_url_ready(self) -> bool:
         return bool(self._detect_platform(self.url_input.text().strip()))
 
     def _set_downloading(self) -> None:
-        self.btn_download.setText("İndiriliyor…")
-        self.btn_download.setEnabled(False)
-        self.btn_cancel.setText("İptal")
-        self.btn_cancel.setEnabled(True)
-        self.btn_cancel.show()
-        self.success_actions.hide()
+        self._render_state(DownloadViewState.DOWNLOADING)
 
     def _set_success(self) -> None:
-        self.btn_download.setText("İndir")
-        self.btn_download.hide()
-        self.btn_cancel.hide()
-        self.worker = None
+        self._render_state(DownloadViewState.SUCCESS)
 
     def _prepare_new_download(self) -> None:
         self.progress_container.hide()
@@ -480,14 +462,32 @@ class MainWindow(QWidget):
         self.progress_bar.setValue(0)
         self.lbl_percent.setText("")
         self.lbl_details.setText("")
-        self.btn_download.show()
         self._set_ready(self._is_url_ready())
-        self._set_status("Hazır")
+        self.set_status("Hazır")
 
     def _reset_controls(self) -> None:
+        self._set_ready(self._is_url_ready())
+
+    def _render_state(self, state: DownloadViewState) -> None:
+        if state == DownloadViewState.DOWNLOADING:
+            self.btn_download.setText("İndiriliyor…")
+            self.btn_download.setEnabled(False)
+            self.btn_download.show()
+            self.btn_cancel.setText("İptal")
+            self.btn_cancel.setEnabled(True)
+            self.btn_cancel.show()
+            self.success_actions.hide()
+            return
+
+        if state == DownloadViewState.SUCCESS:
+            self.btn_download.setText("İndir")
+            self.btn_download.hide()
+            self.btn_cancel.hide()
+            self.success_actions.show()
+            return
+
         self.btn_download.setText("İndir")
         self.btn_download.show()
         self.btn_cancel.setText("İptal")
         self.btn_cancel.hide()
-        self._set_ready(self._is_url_ready())
-        self.worker = None
+        self.success_actions.hide()

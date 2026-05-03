@@ -1,5 +1,6 @@
 import sys
 import os
+from pathlib import Path
 from PyQt5.QtWidgets import QApplication, QStyle
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QSize
@@ -20,8 +21,14 @@ class IconManager:
                 # PyInstaller EXE: dosyalar geçici _MEIPASS dizinine çıkarılır
                 cls._base_dir = sys._MEIPASS
             else:
-                # Geliştirme: ui/icons.py bir üst dizindeki proje kökü
-                cls._base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                current_path = Path(__file__).resolve()
+                for parent in current_path.parents:
+                    if (parent / "icons" / "icon.ico").exists():
+                        cls._base_dir = str(parent)
+                        break
+                else:
+                    # Geliştirme: ui/assets/icons.py -> proje kökü
+                    cls._base_dir = str(current_path.parents[2])
         return cls._base_dir
 
     @classmethod
