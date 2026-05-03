@@ -2,7 +2,7 @@ import os
 import sys
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QFileDialog, QProgressBar, QFrame, QScrollArea
+    QFileDialog, QProgressBar, QFrame, QScrollArea, QStackedWidget
 )
 from PyQt5.QtCore import Qt, pyqtSlot, QUrl
 from PyQt5.QtGui import QDesktopServices, QColor
@@ -13,6 +13,7 @@ from ui.window.controller import MainWindowController
 from ui.assets.icons import IconManager
 from ui.window.view_state import DownloadViewState
 from core.utils import PlatformHelper
+from core.domain import JobStatus
 
 
 # Platform adı → vurgu rengi (hex)
@@ -40,9 +41,12 @@ class MainWindow(QWidget):
 
         self.download_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
         self.controller = MainWindowController(self)
+        self.queue_rows = {}
+        self.history_rows = {}
 
         self._init_ui()
         self.setStyleSheet(StyleManager.get_main_stylesheet())
+        self.render_history(self.controller.list_history())
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -87,9 +91,11 @@ class MainWindow(QWidget):
         content_layout.addLayout(self._create_action_buttons())
         self.progress_container = self._create_progress_section()
         content_layout.addWidget(self.progress_container)
+        content_layout.addWidget(self._create_queue_card())
         content_layout.addStretch()
 
         scroll = QScrollArea()
+        scroll.setObjectName("appScroll")
         scroll.setWidgetResizable(True)
         scroll.setWidget(content_widget)
         scroll.setFrameShape(QFrame.NoFrame)
@@ -99,16 +105,70 @@ class MainWindow(QWidget):
         )
         content_widget.setObjectName("scrollContent")
 
-        root.addWidget(scroll)
+        history_widget = QWidget()
+        history_layout = QVBoxLayout(history_widget)
+        history_layout.setContentsMargins(28, 28, 28, 16)
+        history_layout.setSpacing(16)
+        history_layout.addLayout(self._create_history_header())
+        history_layout.addWidget(self._create_history_card())
+        history_layout.addStretch()
+
+        history_scroll = QScrollArea()
+        history_scroll.setObjectName("appScroll")
+        history_scroll.setWidgetResizable(True)
+        history_scroll.setWidget(history_widget)
+        history_scroll.setFrameShape(QFrame.NoFrame)
+        history_widget.setObjectName("scrollContent")
+
+        self.page_stack = QStackedWidget()
+        self.page_stack.addWidget(scroll)
+        self.page_stack.addWidget(history_scroll)
+
+        root.addWidget(self.page_stack)
         root.addWidget(self._create_status_bar())
         self.setLayout(root)
 
     def _create_header(self) -> QVBoxLayout:
         layout = QVBoxLayout()
         layout.setSpacing(4)
-        layout.addWidget(HeaderLabel("Bağlantı İndirici"))
+        top_row = QHBoxLayout()
+        top_row.setSpacing(8)
+        spacer = QWidget()
+        spacer.setFixedWidth(88)
+        title = HeaderLabel("Bağlantı İndirici")
+        title.setAlignment(Qt.AlignCenter)
+        self.btn_history_page = ModernButton("Geçmiş", "secondary", self._show_history_page)
+        self.btn_history_page.setFixedWidth(88)
+        self.btn_history_page.setFixedHeight(38)
+        top_row.addWidget(spacer)
+        top_row.addWidget(title, stretch=1)
+        top_row.addWidget(self.btn_history_page, alignment=Qt.AlignRight | Qt.AlignTop)
+        layout.addLayout(top_row)
         layout.addWidget(HeaderLabel("YouTube, TikTok, Instagram ve daha fazlasından içerik indirin", subtitle=True))
         return layout
+
+    def _create_history_header(self) -> QHBoxLayout:
+        layout = QHBoxLayout()
+        layout.setSpacing(12)
+        spacer = QWidget()
+        spacer.setFixedWidth(112)
+        title = HeaderLabel("Geçmiş")
+        title.setAlignment(Qt.AlignCenter)
+        btn_back = ModernButton("Ana Sayfa", "secondary", self._show_main_page)
+        btn_back.setFixedWidth(112)
+        layout.addWidget(spacer)
+        layout.addWidget(title, stretch=1)
+        layout.addWidget(btn_back, alignment=Qt.AlignRight | Qt.AlignTop)
+        return layout
+
+    def _show_history_page(self) -> None:
+        self.render_history(self.controller.list_history())
+        self.page_stack.setCurrentIndex(1)
+        self.set_status("Geçmiş")
+
+    def _show_main_page(self) -> None:
+        self.page_stack.setCurrentIndex(0)
+        self.set_status("Hazır")
 
     # -- URL KARTI ---------------------------------------------------- #
 
@@ -157,7 +217,7 @@ class MainWindow(QWidget):
 
         path_row = QHBoxLayout()
         path_row.setSpacing(8)
-        self.path_input = ModernInput(self.download_dir, read_only=True)
+        self.path_input = ModernInput(self._display_download_dir(), read_only=True)
         btn_select = ModernButton("Seç", "secondary", self._select_directory,
                                   icon=IconManager.get('folder'))
         path_row.addWidget(self.path_input, stretch=1)
@@ -201,7 +261,7 @@ class MainWindow(QWidget):
         layout = QHBoxLayout()
         layout.setSpacing(12)
 
-        self.btn_download = ModernButton("İndir", "primary", self._start_download,
+        self.btn_download = ModernButton("Kuyruga Ekle", "primary", self._start_download,
                                          icon=IconManager.get('download'))
         self.btn_download.setEnabled(False)  # URL boşken disabled
 
@@ -269,6 +329,52 @@ class MainWindow(QWidget):
         container.hide()
         return container
 
+    def _create_queue_card(self) -> ModernCard:
+        card = ModernCard()
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(10)
+
+        title_row = QHBoxLayout()
+        title = QLabel("AKTIF KUYRUK")
+        title.setObjectName("formLabel")
+        title_row.addWidget(title)
+        title_row.addStretch()
+        layout.addLayout(title_row)
+
+        self.queue_list = QWidget()
+        self.queue_list_layout = QVBoxLayout(self.queue_list)
+        self.queue_list_layout.setContentsMargins(0, 0, 0, 0)
+        self.queue_list_layout.setSpacing(8)
+        layout.addWidget(self.queue_list)
+
+        self.render_queue([])
+        return card
+
+    def _create_history_card(self) -> ModernCard:
+        card = ModernCard()
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(10)
+
+        title_row = QHBoxLayout()
+        title = QLabel("GECMIS")
+        title.setObjectName("formLabel")
+        btn_clear = ModernButton("Gecmisi Temizle", "secondary", self._clear_history)
+        title_row.addWidget(title)
+        title_row.addStretch()
+        title_row.addWidget(btn_clear)
+        layout.addLayout(title_row)
+
+        self.history_list = QWidget()
+        self.history_list_layout = QVBoxLayout(self.history_list)
+        self.history_list_layout.setContentsMargins(0, 0, 0, 0)
+        self.history_list_layout.setSpacing(8)
+        layout.addWidget(self.history_list)
+
+        self.render_history([])
+        return card
+
     # -- STATUS BAR ---------------------------------------------------- #
 
     def _create_status_bar(self) -> QFrame:
@@ -314,6 +420,145 @@ class MainWindow(QWidget):
         self.platform_badge.show()
 
     # ------------------------------------------------------------------ #
+    #  KUYRUK VE GECMIS
+    # ------------------------------------------------------------------ #
+
+    def render_queue(self, jobs) -> None:
+        self._clear_layout(self.queue_list_layout)
+        active_jobs = [job for job in jobs if job.status in (JobStatus.QUEUED, JobStatus.RUNNING)]
+        if not active_jobs:
+            self.queue_list_layout.addWidget(self._empty_label("Kuyrukta is yok."))
+            return
+        for job in active_jobs:
+            self.queue_list_layout.addWidget(self._queue_row(job))
+
+    def upsert_queue_job(self, job) -> None:
+        self.render_queue(self.controller.queue_service.active_jobs())
+        if job.status == JobStatus.RUNNING:
+            self.progress_container.show()
+            self.progress_bar.setValue(job.progress_percent)
+            self.lbl_percent.setText(f"{job.progress_percent}%")
+            self.lbl_details.setText(job.status_message)
+            self.lbl_progress_title.setText(job.platform)
+        elif not self.controller.queue_service.active_jobs():
+            self.progress_container.hide()
+
+    def render_history(self, jobs) -> None:
+        if not hasattr(self, "history_list_layout"):
+            return
+        self._clear_layout(self.history_list_layout)
+        finished_jobs = [
+            job for job in jobs
+            if job.status in (JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED)
+        ]
+        if not finished_jobs:
+            self.history_list_layout.addWidget(self._empty_label("Gecmis kaydi yok."))
+            return
+        for job in finished_jobs:
+            self.history_list_layout.addWidget(self._history_row(job))
+
+    def _queue_row(self, job) -> QFrame:
+        row = QFrame()
+        row.setObjectName("statusBar")
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(10)
+
+        text = QLabel(self._history_summary(job))
+        text.setObjectName("statusBarText")
+        text.setWordWrap(True)
+        layout.addWidget(text, stretch=1)
+
+        if job.status in (JobStatus.QUEUED, JobStatus.RUNNING):
+            btn_cancel = ModernButton("Iptal", "danger", lambda _, job_id=job.id: self.controller.cancel_download(job_id))
+            layout.addWidget(btn_cancel)
+
+        return row
+
+    def _history_row(self, job) -> QFrame:
+        row = QFrame()
+        row.setObjectName("statusBar")
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(10)
+
+        text = QLabel(self._job_summary(job))
+        text.setObjectName("statusBarText")
+        text.setWordWrap(True)
+        layout.addWidget(text, stretch=1)
+
+        btn_retry = ModernButton("Tekrar Dene", "secondary", lambda _, job_id=job.id: self.controller.retry_download(job_id))
+        layout.addWidget(btn_retry)
+
+        if job.output_path:
+            btn_folder = ModernButton(
+                "Klasorde Goster",
+                "secondary",
+                lambda _, path=job.output_path: self._open_path(path),
+                icon=IconManager.get('folder_open'),
+            )
+            layout.addWidget(btn_folder)
+
+        return row
+
+    def _job_summary(self, job) -> str:
+        status_labels = {
+            JobStatus.QUEUED: "Bekliyor",
+            JobStatus.RUNNING: "Indiriliyor",
+            JobStatus.COMPLETED: "Tamamlandi",
+            JobStatus.FAILED: "Basarisiz",
+            JobStatus.CANCELLED: "Iptal",
+        }
+        filename = self._display_name(job, allow_url=True)
+        detail = job.error_message or job.status_message
+        return (
+            f"{job.platform} - {status_labels.get(job.status, job.status.value)} "
+            f"- %{job.progress_percent}\n{filename}\n{detail}"
+        )
+
+    def _history_summary(self, job) -> str:
+        status_labels = {
+            JobStatus.COMPLETED: "Tamamlandi",
+            JobStatus.FAILED: "Basarisiz",
+            JobStatus.CANCELLED: "Iptal",
+        }
+        name = self._display_name(job, allow_url=False)
+        detail = job.error_message or job.status_message
+        return (
+            f"{job.platform} - {status_labels.get(job.status, job.status.value)} "
+            f"- %{job.progress_percent}\n{name}\n{detail}"
+        )
+
+    def _display_name(self, job, allow_url: bool) -> str:
+        if job.title and not self._looks_like_url(job.title):
+            return job.title
+        if job.options.filename:
+            return job.options.filename
+        if job.output_path and os.path.isfile(job.output_path):
+            return os.path.basename(job.output_path)
+        if allow_url:
+            return job.normalized_url
+        return f"{job.platform} indirimi"
+
+    @staticmethod
+    def _looks_like_url(value: str) -> bool:
+        lowered = (value or "").strip().lower()
+        return lowered.startswith(("http://", "https://", "www.", "youtu.be/"))
+
+    def _empty_label(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setObjectName("helperText")
+        label.setAlignment(Qt.AlignCenter)
+        return label
+
+    def _clear_layout(self, layout) -> None:
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+    # ------------------------------------------------------------------ #
     #  EVENT HANDLER'LAR
     # ------------------------------------------------------------------ #
 
@@ -353,11 +598,32 @@ class MainWindow(QWidget):
         new_dir = QFileDialog.getExistingDirectory(self, "İndirme Dizinini Seç", self.download_dir)
         if new_dir:
             self.download_dir = new_dir
-            self.path_input.setText(self.download_dir)
+            self.path_input.setText(self._display_download_dir())
 
     def _open_directory(self) -> None:
         if os.path.exists(self.download_dir):
             QDesktopServices.openUrl(QUrl.fromLocalFile(self.download_dir))
+
+    def _open_path(self, path: str) -> None:
+        if path and os.path.exists(path):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+
+    def _clear_history(self) -> None:
+        self.controller.clear_history()
+
+    def _display_download_dir(self) -> str:
+        home_dir = os.path.normpath(os.path.expanduser("~"))
+        download_dir = os.path.normpath(self.download_dir)
+        if sys.platform.startswith("win"):
+            home_cmp = home_dir.lower()
+            dir_cmp = download_dir.lower()
+            if dir_cmp == home_cmp or dir_cmp.startswith(home_cmp + os.sep):
+                suffix = download_dir[len(home_dir):].lstrip("\\/")
+                return os.path.join(r"C:\Users\<user>", suffix) if suffix else r"C:\Users\<user>"
+        elif download_dir == home_dir or download_dir.startswith(home_dir + os.sep):
+            suffix = download_dir[len(home_dir):].lstrip("/")
+            return f"/home/<user>/{suffix}" if suffix else "/home/<user>"
+        return download_dir
 
     # ------------------------------------------------------------------ #
     #  İNDİRME MANTIĞI
@@ -367,15 +633,6 @@ class MainWindow(QWidget):
         url = self.url_input.text().strip()
         if not url:
             return
-
-        self._set_downloading()
-
-        self.progress_container.show()
-        self.progress_bar.setValue(0)
-        self.lbl_percent.setText("0%")
-        self.lbl_details.setText("Hazırlanıyor…")
-        self.lbl_progress_title.setText("İndiriliyor…")
-        self.set_status("Bağlantı analiz ediliyor…")
 
         seg = self.format_segment.value()
         if seg == 'playlist':
@@ -387,13 +644,14 @@ class MainWindow(QWidget):
 
         filename = self.filename_input.text().strip() or None
 
-        self.controller.start_download(url, self.download_dir, mode, filename, is_playlist)
+        self.controller.enqueue_download(url, self.download_dir, mode, filename, is_playlist)
+        self.url_input.clear()
+        self._set_ready(False)
 
     def _cancel_download(self) -> None:
-        if self.controller.is_running():
-            self.controller.cancel_download()
-            self.btn_cancel.setEnabled(False)
-            self.btn_cancel.setText("İptal ediliyor…")
+        active_jobs = self.controller.queue_service.active_jobs()
+        if active_jobs:
+            self.controller.cancel_download(active_jobs[0].id)
 
     # -- Sinyal alıcılar ----------------------------------------------- #
 
@@ -442,8 +700,6 @@ class MainWindow(QWidget):
         )
 
     def _set_ready(self, ready: bool) -> None:
-        if self.controller.is_running():
-            return
         self._render_state(DownloadViewState.READY if ready else DownloadViewState.IDLE)
         self.btn_download.setEnabled(ready)
 
@@ -470,7 +726,7 @@ class MainWindow(QWidget):
 
     def _render_state(self, state: DownloadViewState) -> None:
         if state == DownloadViewState.DOWNLOADING:
-            self.btn_download.setText("İndiriliyor…")
+            self.btn_download.setText("Kuyruga Ekle")
             self.btn_download.setEnabled(False)
             self.btn_download.show()
             self.btn_cancel.setText("İptal")
@@ -480,13 +736,13 @@ class MainWindow(QWidget):
             return
 
         if state == DownloadViewState.SUCCESS:
-            self.btn_download.setText("İndir")
+            self.btn_download.setText("Kuyruga Ekle")
             self.btn_download.hide()
             self.btn_cancel.hide()
             self.success_actions.show()
             return
 
-        self.btn_download.setText("İndir")
+        self.btn_download.setText("Kuyruga Ekle")
         self.btn_download.show()
         self.btn_cancel.setText("İptal")
         self.btn_cancel.hide()
