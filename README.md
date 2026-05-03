@@ -79,6 +79,42 @@ sudo apt install ffmpeg
 python main.py
 ```
 
+### Conda Ortamı
+Bu proje için önerilen ortam adı `BaglantiIndir`:
+
+```bash
+conda run -n BaglantiIndir python main.py
+```
+
+Eğer `conda` PATH içinde değilse, Anaconda/Miniconda kurulum dizinindeki `conda.exe` tam yolu ile aynı komutu çalıştırın.
+
+## 🧪 Test
+
+Geliştirme bağımlılıklarını kurduktan sonra testleri çalıştırın:
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest
+```
+
+Conda ortamı ile:
+
+```bash
+conda run -n BaglantiIndir python -m pytest
+```
+
+## 🔤 Font Profili
+
+Arayüz font seçimi `ui/themeing/font_profiles.py` içindeki `ACTIVE_FONT_PROFILE` değeriyle yönetilir.
+
+*   `playful`: Nunito tabanlı, daha yuvarlak ve eğlenceli görünüm.
+*   `modern`: Inter tabanlı, daha ciddi ve nötr görünüm.
+*   `elegant`: Cormorant Garamond tabanlı, zarif ve klasik görünüm.
+*   `classic`: Playfair Display tabanlı, şık ve editorial görünüm.
+*   `italic_classic`: Cormorant Garamond tabanlı, italik eğilimli klasik görünüm.
+
+Beğenmezseniz `ACTIVE_FONT_PROFILE = "modern"` yaparak önceki font profiline dönebilirsiniz.
+
 ## 💡 Kullanım Kılavuzu
 
 1.  **Bağlantı Ekleme:** İndirmek istediğiniz videonun veya içeriğin URL'sini uygulamadaki "Bağlantı" alanına yapıştırın.
@@ -97,12 +133,15 @@ Baglanti_Indirici/
 ├── requirements.txt        # Bağımlılık listesi
 ├── core/                   # Arka plan ve iş mantığı
 │   ├── config.py           # Dizin ve FFmpeg yapılandırmaları
-│   ├── worker.py           # QThread tabanlı asenkron indirme yöneticisi
-│   └── utils.py            # Platform ve URL çözümleme araçları
+│   ├── download/           # İndirme akışı, worker, yt-dlp ve ilerleme
+│   ├── platform/           # Platform algılama ve format politikaları
+│   ├── web/                # Web sayfalarından medya kaynağı çözme
+│   └── utils.py            # Geriye dönük uyumluluk adaptörü
 ├── ui/                     # Kullanıcı arayüzü (GUI) bileşenleri
-│   ├── main_window.py      # Ana pencere tasarımı
-│   ├── components.py       # Özelleştirilmiş modern buton ve input'lar
-│   └── styles.py           # CSS stil tanımlamaları
+│   ├── assets/             # İkon/font yükleme ve UI kaynakları
+│   ├── themeing/           # Tema token'ları ve CSS parçaları
+│   ├── widgets/            # Ortak PyQt bileşenleri
+│   └── window/             # Ana pencere, controller ve view state
 ├── icons/                  # İkonlar ve görseller
 ├── build_pyinstaller.bat   # PyInstaller derleme betiği
 └── build_nuitka.bat        # Nuitka derleme betiği
