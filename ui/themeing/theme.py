@@ -8,9 +8,9 @@ THEME = {
     "border": "#2B3240",
     "border_hover": "#3A4454",
     "text": "#FFFFFF",
-    "text_secondary": "#DDEBFF",
-    "text_muted": "#B7CAE4",
-    "text_soft": "#C8D8EF",
+    "text_secondary": "#F2F7FF",
+    "text_muted": "#D7E6FA",
+    "text_soft": "#E6F0FF",
     "text_button": "#081018",
     "accent": "#12C8E8",
     "accent_hover": "#45D6EF",
@@ -20,7 +20,7 @@ THEME = {
 
 FONT_SIZES = {
     "body": 14,
-    "title": 25,
+    "title": 27,
     "subtitle": 14,
     "label": 12,
     "helper": 12,

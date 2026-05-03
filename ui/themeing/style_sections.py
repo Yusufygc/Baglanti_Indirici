@@ -18,29 +18,32 @@ def text_styles():
     return f"""
         #headerTitle {{
             font-size: {fs["title"]}px;
-            font-weight: 700;
+            font-weight: 800;
             color: {t["text"]};
             letter-spacing: 0;
         }}
 
         #headerSubtitle {{
             font-size: {fs["subtitle"]}px;
-            color: {t["text_secondary"]};
+            color: {t["text"]};
+            font-weight: 500;
             margin-bottom: 6px;
         }}
 
         #formLabel {{
             font-size: {fs["label"]}px;
-            font-weight: 700;
-            color: {t["text_secondary"]};
+            font-weight: 800;
+            color: {t["text"]};
             letter-spacing: 0.8px;
             background: transparent;
         }}
 
         #helperText {{
             font-size: {fs["helper"]}px;
-            color: {t["text_soft"]};
+            color: {t["text"]};
+            font-weight: 600;
             margin-top: 2px;
+            background: transparent;
         }}
 
         #errorText {{
@@ -67,19 +70,20 @@ def container_styles():
 
         #statusBarText {{
             font-size: {fs["status"]}px;
-            font-weight: 600;
-            color: {t["text_secondary"]};
+            font-weight: 700;
+            color: {t["text"]};
         }}
 
         #footerText {{
-            color: {t["text_secondary"]};
+            color: {t["text"]};
             font-family: {FontManager.mono_stack()};
             font-size: {fs["footer"]}px;
         }}
 
         #detailLabel {{
-            color: {t["text_secondary"]};
+            color: {t["text"]};
             font-size: {fs["status"]}px;
+            font-weight: 600;
         }}
     """
 
@@ -93,6 +97,7 @@ def input_styles():
             padding: 10px 12px;
             color: {t["text"]};
             font-size: {fs["input"]}px;
+            font-weight: 500;
             selection-background-color: {t["accent"]};
             selection-color: {t["background"]};
         }}
@@ -103,14 +108,14 @@ def input_styles():
         }}
 
         QLineEdit:disabled {{
-            color: {t["text_soft"]};
+            color: {t["text_muted"]};
             background-color: {t["surface"]};
             border-color: {t["surface_hover"]};
         }}
 
         #pathDisplay {{
             background-color: {t["surface"]};
-            color: {t["text_soft"]};
+            color: {t["text_muted"]};
             border-color: {t["surface_hover"]};
         }}
     """
@@ -134,7 +139,7 @@ def button_styles():
 
         #primaryButton:disabled {{
             background-color: {t["surface_elevated"]};
-            color: {t["text_soft"]};
+            color: {t["text_muted"]};
             border: 1px solid {t["border"]};
         }}
 
@@ -143,14 +148,15 @@ def button_styles():
             border: 1px solid {t["border"]};
             border-radius: 6px;
             padding: 8px 14px;
-            color: #C3CDDB;
+            color: {t["text"]};
             font-size: {fs["secondary_button"]}px;
+            font-weight: 600;
         }}
 
         #secondaryButton:hover {{
             background-color: {t["surface_hover"]};
             border-color: {t["border_hover"]};
-            color: {t["text"]};
+            color: {t["accent_hover"]};
         }}
 
         #dangerButton {{
@@ -168,7 +174,7 @@ def button_styles():
 
         #dangerButton:disabled {{
             background-color: {t["surface"]};
-            color: {t["text_soft"]};
+            color: {t["text_muted"]};
             border-color: {t["border"]};
         }}
 
@@ -199,9 +205,9 @@ def control_styles():
             border: none;
             border-radius: 6px;
             padding: 8px 18px;
-            color: {t["text_secondary"]};
+            color: {t["text"]};
             font-size: {fs["segment"]}px;
-            font-weight: 500;
+            font-weight: 700;
             min-width: 80px;
         }}
 
@@ -217,8 +223,9 @@ def control_styles():
         }}
 
         QCheckBox {{
-            color: {t["text_secondary"]};
+            color: {t["text"]};
             spacing: 8px;
+            font-weight: 600;
         }}
 
         QCheckBox::indicator {{
@@ -253,23 +260,73 @@ def control_styles():
 
 def scrollbar_styles():
     return f"""
+        QScrollArea#appScroll {{
+            background: transparent;
+            border: none;
+        }}
+
+        QScrollArea#appScroll > QWidget > QWidget#scrollContent {{
+            background: transparent;
+        }}
+
         QScrollBar:vertical {{
-            background: {t["background"]};
-            width: 8px;
-            margin: 0;
+            background: transparent;
+            width: 12px;
+            margin: 10px 3px 10px 3px;
         }}
 
         QScrollBar::handle:vertical {{
-            background: {t["border"]};
-            border-radius: 4px;
-            min-height: 24px;
+            background: {t["border_hover"]};
+            border: 2px solid {t["background"]};
+            border-radius: 6px;
+            min-height: 34px;
         }}
 
-        QScrollBar::handle:vertical:hover {{ background: {t["border_hover"]}; }}
+        QScrollBar::handle:vertical:hover {{
+            background: {t["accent_pressed"]};
+        }}
+
+        QScrollBar::handle:vertical:pressed {{
+            background: {t["accent"]};
+        }}
 
         QScrollBar::add-line:vertical,
         QScrollBar::sub-line:vertical {{
             height: 0px;
+            background: transparent;
+        }}
+
+        QScrollBar::add-page:vertical,
+        QScrollBar::sub-page:vertical {{
+            background: transparent;
+        }}
+
+        QScrollBar:horizontal {{
+            background: transparent;
+            height: 12px;
+            margin: 3px 10px 3px 10px;
+        }}
+
+        QScrollBar::handle:horizontal {{
+            background: {t["border_hover"]};
+            border: 2px solid {t["background"]};
+            border-radius: 6px;
+            min-width: 34px;
+        }}
+
+        QScrollBar::handle:horizontal:hover {{
+            background: {t["accent_pressed"]};
+        }}
+
+        QScrollBar::add-line:horizontal,
+        QScrollBar::sub-line:horizontal {{
+            width: 0px;
+            background: transparent;
+        }}
+
+        QScrollBar::add-page:horizontal,
+        QScrollBar::sub-page:horizontal {{
+            background: transparent;
         }}
     """
 
