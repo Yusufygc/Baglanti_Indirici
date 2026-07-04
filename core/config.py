@@ -4,10 +4,10 @@ import sys
 def get_base_path():
     """
     Uygulamanın çalıştığı temel dizini döndürür.
-    Nuitka veya PyInstaller ile derlendiğinde geçici veya çalıştırılabilir dizini doğru bulur.
+    PyInstaller ile derlendiğinde çalıştırılabilir dizini doğru bulur.
     """
     if getattr(sys, 'frozen', False):
-        # Nuitka veya PyInstaller ile derlenmiş
+        # PyInstaller ile derlenmiş
         return os.path.dirname(sys.executable)
     else:
         # Normal python çalışması
@@ -45,3 +45,26 @@ def get_ffmpeg_path():
         
     # 4. Sadece komut ismi döndür (sistem path'inde varsa çalışır)
     return 'ffmpeg'
+
+def get_yt_dlp_lib_dir():
+    """
+    Harici, guncellenebilir yt_dlp paketini barindiran 'lib' klasorunun
+    yolunu dondurur (yt_dlp/ paketinin PARENT dizini, sys.path'e eklenecek olan).
+    Sirasiyla:
+    1. Exe yanindaki lib/yt_dlp (frozen: PyInstaller onefile)
+    2. Proje kokundeki lib/yt_dlp (gelistirme ortaminda opsiyonel)
+    3. None -> harici kopya yok; normal 'import yt_dlp' cozumlemesi (pip/site-packages)
+       oldugu gibi calissin.
+    """
+    base_path = get_base_path()
+    candidate = os.path.join(base_path, 'lib')
+    if os.path.exists(os.path.join(candidate, 'yt_dlp', '__init__.py')):
+        return candidate
+
+    dev_candidate = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'
+    )
+    if os.path.exists(os.path.join(dev_candidate, 'yt_dlp', '__init__.py')):
+        return dev_candidate
+
+    return None

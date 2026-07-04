@@ -1,9 +1,9 @@
 from ui.assets.font_manager import FontManager
 from .theme import FONT_SIZES as fs
-from .theme import THEME as t
+from .theme import THEMES
 
 
-def global_styles():
+def global_styles(t):
     return f"""
         QWidget {{
             background-color: {t["background"]};
@@ -14,7 +14,7 @@ def global_styles():
     """
 
 
-def text_styles():
+def text_styles(t):
     return f"""
         #headerTitle {{
             font-size: {fs["title"]}px;
@@ -54,12 +54,13 @@ def text_styles():
     """
 
 
-def container_styles():
+def container_styles(t):
     return f"""
         #modernCard {{
             background-color: {t["surface"]};
             border: 1px solid {t["border"]};
-            border-radius: 8px;
+            border-top: 1px solid {t["card_edge"]};
+            border-radius: 10px;
         }}
 
         #statusBar {{
@@ -88,7 +89,7 @@ def container_styles():
     """
 
 
-def input_styles():
+def input_styles(t):
     return f"""
         QLineEdit {{
             background-color: {t["surface_elevated"]};
@@ -121,7 +122,7 @@ def input_styles():
     """
 
 
-def button_styles():
+def button_styles(t):
     return f"""
         #primaryButton {{
             background-color: {t["accent"]};
@@ -192,7 +193,7 @@ def button_styles():
     """
 
 
-def control_styles():
+def control_styles(t):
     return f"""
         #segmentControl {{
             background-color: {t["surface_elevated"]};
@@ -258,7 +259,7 @@ def control_styles():
     """
 
 
-def scrollbar_styles():
+def scrollbar_styles(t):
     return f"""
         QScrollArea#appScroll {{
             background: transparent;
@@ -331,13 +332,14 @@ def scrollbar_styles():
     """
 
 
-def main_stylesheet():
+def main_stylesheet(theme_name: str = "dark"):
+    t = THEMES.get(theme_name, THEMES["dark"])
     return "\n".join([
-        global_styles(),
-        text_styles(),
-        container_styles(),
-        input_styles(),
-        button_styles(),
-        control_styles(),
-        scrollbar_styles(),
+        global_styles(t),
+        text_styles(t),
+        container_styles(t),
+        input_styles(t),
+        button_styles(t),
+        control_styles(t),
+        scrollbar_styles(t),
     ])

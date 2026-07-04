@@ -146,7 +146,7 @@ sudo apt install ffmpeg
 
 Uygulama FFmpeg'i su sirayla arar:
 
-1. PyInstaller/Nuitka bundle icindeki `ffmpeg.exe`
+1. PyInstaller bundle icindeki `ffmpeg.exe`
 2. Uygulama kok dizinindeki `ffmpeg.exe`
 3. Gelistirme ortamindaki proje kok dizini
 4. `C:\ffmpeg\bin\ffmpeg.exe`
@@ -218,8 +218,7 @@ Baglanti_Indir/
 │   └── window/
 ├── icons/
 ├── tests/
-├── build_pyinstaller.bat
-└── build_nuitka.bat
+└── build_pyinstaller.bat
 ```
 
 ### `main.py`
@@ -440,23 +439,13 @@ Son dogrulama sirasinda test paketi:
 
 ## Paketleme
 
-Projede iki Windows paketleme betigi bulunur.
-
 ### PyInstaller
 
 ```powershell
 .\build_pyinstaller.bat
 ```
 
-Hizli ve yaygin paketleme secenegidir. Cikti genellikle `dist/` dizinine yazilir.
-
-### Nuitka
-
-```powershell
-.\build_nuitka.bat
-```
-
-Daha optimize executable uretmek icin kullanilir. Nuitka ve uygun C derleyicisi gerektirebilir.
+Cikti `dist/` dizinine yazilir.
 
 Paketlemeden once:
 

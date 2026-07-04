@@ -2,6 +2,7 @@ from core.domain import DownloadOptions, JobStatus
 from core.download.worker import DownloadQueueWorker
 from core.history import HistoryRepository
 from core.queue import DownloadQueueService
+from core.update.worker import UpdateCheckWorker, UpdateInstallWorker
 
 
 class MainWindowController:
@@ -11,12 +12,19 @@ class MainWindowController:
         worker_factory=DownloadQueueWorker,
         history_repository=None,
         queue_service=None,
+        update_check_worker_factory=UpdateCheckWorker,
+        update_install_worker_factory=UpdateInstallWorker,
     ):
         self.view = view
         self.worker_factory = worker_factory
         self.history_repository = history_repository or HistoryRepository()
         self.queue_service = queue_service or DownloadQueueService(self.history_repository)
         self.worker = None
+        self.update_check_worker_factory = update_check_worker_factory
+        self.update_install_worker_factory = update_install_worker_factory
+        self._update_check_worker = None
+        self._update_install_worker = None
+        self._pending_release = None
 
     def is_running(self):
         return bool(self.worker and self.worker.isRunning())
@@ -91,3 +99,36 @@ class MainWindowController:
         self.view.render_queue(self.queue_service.active_jobs())
         self.view.render_history(self.list_history())
         self.view.set_status("Hazir")
+
+    def check_for_yt_dlp_update(self):
+        if self._update_check_worker and self._update_check_worker.isRunning():
+            return
+        self._update_check_worker = self.update_check_worker_factory()
+        self._update_check_worker.signals.update_available.connect(self._on_update_available)
+        self._update_check_worker.signals.up_to_date.connect(lambda: None)
+        self._update_check_worker.signals.error.connect(lambda _msg: None)  # sessiz
+        self._update_check_worker.start()
+
+    def _on_update_available(self, release):
+        self._pending_release = release
+        self.view.show_update_available(release.version)
+
+    def install_yt_dlp_update(self):
+        if not self._pending_release:
+            return
+        if self._update_install_worker and self._update_install_worker.isRunning():
+            return
+        self._update_install_worker = self.update_install_worker_factory(self._pending_release)
+        self._update_install_worker.signals.progress.connect(self.view.show_update_progress)
+        self._update_install_worker.signals.completed.connect(self._on_update_installed)
+        self._update_install_worker.signals.error.connect(self._on_update_error)
+        self.view.show_update_installing()
+        self._update_install_worker.start()
+
+    def _on_update_installed(self, version):
+        self._pending_release = None
+        self.view.show_update_installed(version)
+
+    def _on_update_error(self, message):
+        self.view.set_status(f"Guncelleme hatasi: {message}", error=True)
+        self.view.hide_update_button()

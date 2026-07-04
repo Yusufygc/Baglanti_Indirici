@@ -5,15 +5,19 @@ from PyQt5.QtWidgets import (
     QFileDialog, QProgressBar, QFrame, QScrollArea, QStackedWidget
 )
 from PyQt5.QtCore import Qt, pyqtSlot, QUrl
-from PyQt5.QtGui import QDesktopServices, QColor
+from PyQt5.QtGui import QDesktopServices, QColor, QPalette
 
 from ui.themeing.styles import StyleManager
+from ui.themeing.theme import THEMES
 from ui.widgets.components import ModernCard, HeaderLabel, ModernButton, ModernInput, SegmentControl
 from ui.window.controller import MainWindowController
 from ui.assets.icons import IconManager
 from ui.window.view_state import DownloadViewState
 from core.utils import PlatformHelper
 from core.domain import JobStatus
+from core.settings import load_theme, save_theme
+
+_THEME_TOGGLE_ICON = {"dark": "☀", "light": "🌙"}
 
 
 # Platform adı → vurgu rengi (hex)
@@ -43,10 +47,12 @@ class MainWindow(QWidget):
         self.controller = MainWindowController(self)
         self.queue_rows = {}
         self.history_rows = {}
+        self._theme_name = load_theme()
 
         self._init_ui()
-        self.setStyleSheet(StyleManager.get_main_stylesheet())
+        self._apply_theme()
         self.render_history(self.controller.list_history())
+        self.controller.check_for_yt_dlp_update()
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -133,19 +139,39 @@ class MainWindow(QWidget):
         layout.setSpacing(4)
         top_row = QHBoxLayout()
         top_row.setSpacing(8)
-        spacer = QWidget()
-        spacer.setFixedWidth(88)
+        self.btn_theme_toggle = ModernButton(
+            _THEME_TOGGLE_ICON[self._theme_name], "secondary", self._on_theme_toggle
+        )
+        self.btn_theme_toggle.setFixedWidth(44)
+        self.btn_theme_toggle.setFixedHeight(38)
         title = HeaderLabel("Bağlantı İndirici")
         title.setAlignment(Qt.AlignCenter)
         self.btn_history_page = ModernButton("Geçmiş", "secondary", self._show_history_page)
         self.btn_history_page.setFixedWidth(88)
         self.btn_history_page.setFixedHeight(38)
-        top_row.addWidget(spacer)
+        top_row.addWidget(self.btn_theme_toggle, alignment=Qt.AlignLeft | Qt.AlignTop)
         top_row.addWidget(title, stretch=1)
         top_row.addWidget(self.btn_history_page, alignment=Qt.AlignRight | Qt.AlignTop)
         layout.addLayout(top_row)
         layout.addWidget(HeaderLabel("YouTube, TikTok, Instagram ve daha fazlasından içerik indirin", subtitle=True))
         return layout
+
+    def _on_theme_toggle(self, *_args) -> None:
+        self._theme_name = "light" if self._theme_name == "dark" else "dark"
+        save_theme(self._theme_name)
+        self._apply_theme()
+
+    def _apply_theme(self) -> None:
+        self.setStyleSheet(StyleManager.get_main_stylesheet(self._theme_name))
+        self.btn_theme_toggle.setText(_THEME_TOGGLE_ICON[self._theme_name])
+        self._refresh_input_placeholders()
+
+    def _refresh_input_placeholders(self) -> None:
+        muted = QColor(THEMES[self._theme_name]["text_muted"])
+        for line_edit in self.findChildren(ModernInput):
+            palette = line_edit.palette()
+            palette.setColor(QPalette.PlaceholderText, muted)
+            line_edit.setPalette(palette)
 
     def _create_history_header(self) -> QHBoxLayout:
         layout = QHBoxLayout()
@@ -386,13 +412,41 @@ class MainWindow(QWidget):
         self.lbl_status_bar = QLabel("Hazır")
         self.lbl_status_bar.setObjectName("statusBarText")
 
+        self.btn_yt_dlp_update = ModernButton("Güncelleme Mevcut", "secondary", self._on_update_clicked)
+        self.btn_yt_dlp_update.hide()
+
         lbl_ver = QLabel("v1.0.0")
         lbl_ver.setObjectName("footerText")
 
         layout.addWidget(self.lbl_status_bar)
         layout.addStretch()
+        layout.addWidget(self.btn_yt_dlp_update)
         layout.addWidget(lbl_ver)
         return bar
+
+    # -- YT-DLP GUNCELLEME ---------------------------------------------- #
+
+    def _on_update_clicked(self, *_args) -> None:
+        self.controller.install_yt_dlp_update()
+
+    def show_update_available(self, version: str) -> None:
+        self.btn_yt_dlp_update.setText(f"yt-dlp {version} mevcut - Güncelle")
+        self.btn_yt_dlp_update.show()
+
+    def show_update_installing(self) -> None:
+        self.btn_yt_dlp_update.setText("Güncelleniyor... %0")
+        self.btn_yt_dlp_update.setEnabled(False)
+
+    def show_update_progress(self, percent: int) -> None:
+        self.btn_yt_dlp_update.setText(f"Güncelleniyor... %{percent}")
+
+    def show_update_installed(self, version: str) -> None:
+        self.btn_yt_dlp_update.setText(f"yt-dlp {version} kuruldu - Yeniden başlatın")
+        self.btn_yt_dlp_update.setEnabled(False)
+
+    def hide_update_button(self) -> None:
+        self.btn_yt_dlp_update.hide()
+        self.btn_yt_dlp_update.setEnabled(True)
 
     # ------------------------------------------------------------------ #
     #  PLATFORM ALGILAMA

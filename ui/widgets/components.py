@@ -30,6 +30,11 @@ class ModernButton(QPushButton):
             self.setObjectName("primaryButton")
             self.setFixedHeight(48)
             self.setMinimumWidth(150)
+            glow = QGraphicsDropShadowEffect()
+            glow.setBlurRadius(28)
+            glow.setColor(QColor(18, 200, 232, 90))
+            glow.setOffset(0, 0)
+            self.setGraphicsEffect(glow)
         elif btn_type == "danger":
             self.setObjectName("dangerButton")
             self.setFixedHeight(48)
