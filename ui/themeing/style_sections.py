@@ -162,6 +162,19 @@ def button_styles(t):
             color: {t["accent_hover"]};
         }}
 
+        #themeToggleButton {{
+            background-color: {t["surface_elevated"]};
+            border: 1px solid {t["border"]};
+            border-radius: 8px;
+            padding: 0px;
+            font-size: 18px;
+        }}
+
+        #themeToggleButton:hover {{
+            background-color: {t["surface_hover"]};
+            border-color: {t["border_hover"]};
+        }}
+
         #dangerButton {{
             background-color: {t["surface_elevated"]};
             border: 1.5px solid {t["danger"]};

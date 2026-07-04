@@ -142,7 +142,8 @@ class MainWindow(QWidget):
         self.btn_theme_toggle = ModernButton(
             _THEME_TOGGLE_ICON[self._theme_name], "secondary", self._on_theme_toggle
         )
-        self.btn_theme_toggle.setFixedWidth(44)
+        self.btn_theme_toggle.setObjectName("themeToggleButton")
+        self.btn_theme_toggle.setFixedWidth(46)
         self.btn_theme_toggle.setFixedHeight(38)
         title = HeaderLabel("Bağlantı İndirici")
         title.setAlignment(Qt.AlignCenter)
