@@ -6,7 +6,7 @@ Bkz. [[index]]
 
 Format: `tip: kısa açıklama` (Türkçe, büyük harfle başlamayan tip, ~50-70 karakter özet).
 
-Kullanılan tipler (repo geçmişinden): `feat`, `fix`, `ui`, `tests`, `icons`, `build`, `docs`.
+Kullanılan tipler (repo geçmişinden): `feat`, `fix`, `ui`, `core`, `tests`, `icons`, `docs`.
 
 - Başlık satırı özet, gövde (varsa) **neden** yapıldığını açıklar — kod zaten **ne** yaptığını gösterir, tekrar etme.
 - Kök neden biliniyorsa `fix` commit'lerinde mutlaka belirt (örn. "genel QWidget arka plan kuralı etikete de sızıyordu").

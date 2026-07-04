@@ -2,9 +2,13 @@
 
 Kronolojik kayıt, en yeni en üstte. Format: `## [YYYY-AA-GG] [İŞLEM_TİPİ] | Kısa Açıklama`
 
+## [2026-07-04] LINT | Wiki tutarlılık kontrolü ve düzeltme
+
+`docs/wiki/` tarandı: bağlantı bütünlüğü sorunsuz (kırık link/öksüz sayfa yok). İki bulgu düzeltildi: [[rules]] içindeki commit tipi listesi gerçek git geçmişiyle uyumlu hale getirildi (`build` kaldırıldı — hiç kullanılmamış; `core` eklendi — en çok kullanılan tip, 8 commit). `log.md`'deki kendine referans (`[[log]]` self-link) düz metne çevrildi.
+
 ## [2026-07-04] INGEST | LLM Wiki sistemi kuruldu
 
-`docs/wiki/` bilgi tabanı oluşturuldu: [[index]], [[rules]], [[log]], [[mimari]], [[yt_dlp_oto_guncelleme]], [[tema_sistemi]], [[paketleme]]. Proje köküne `CLAUDE.md` eklendi (wiki'yi her oturumda önce okuma kuralı).
+`docs/wiki/` bilgi tabanı oluşturuldu: [[index]], [[rules]], log.md (bu dosya), [[mimari]], [[yt_dlp_oto_guncelleme]], [[tema_sistemi]], [[paketleme]]. Proje köküne `CLAUDE.md` eklendi (wiki'yi her oturumda önce okuma kuralı).
 
 ## [2026-07-04] MAINT | Commit geçmişinden AI referansı temizlendi
 
