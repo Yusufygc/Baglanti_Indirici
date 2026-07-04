@@ -2,6 +2,26 @@
 
 Kronolojik kayıt, en yeni en üstte. Format: `## [YYYY-AA-GG] [İŞLEM_TİPİ] | Kısa Açıklama`
 
+## [2026-07-04] FEATURE | Instagram uygulama-ici login (gomulu QtWebEngine) + kalici oturum
+
+Instagram login duvari icin gercek cozum: uygulama-ici gomulu QtWebEngine giris penceresi. Kullanici bir kez giris yapar (sifre uygulamada tutulmaz), oturum cerezleri (HttpOnly sessionid dahil) yakalanip Netscape cookies.txt'e yazilir, yt-dlp'ye `cookiefile` olarak verilir. Yeni: `core/instagram/session.py` (saf), `ui/window/instagram_login_dialog.py` (QtWebEngine, lazy import). Header'a "Instagram Giris" butonu; login duvarina takilan indirmede controller otomatik yonlendiriyor (oturum dolmussa temizleyip yeniden giris istiyor). QtWebEngine icin `main.py`'de `AA_ShareOpenGLContexts` + build **onedir**'e gecti (onefile'da QtWebEngine guvenilmez), `installer.iss` tum klasoru paketliyor. `PyQtWebEngine` bagimliligi eklendi. Detay: [[instagram_login]], [[paketleme]].
+
+## [2026-07-04] FIX | Gecmis sadece tamamlananlar, iptal kalintisi temizligi, Enter ile kuyruga alma
+
+Kullanici istekleri: (1) basarisiz/iptal isler gecmise dusmesin - `HistoryRepository.list_recent()` SQL'de `WHERE status='completed'` ile filtrelendi, `render_history()` de sadece COMPLETED gosteriyor. (2) Enter ile kuyruga alma - `url_input` ve `filename_input`'a `returnPressed -> _start_download` baglandi. (3) Iptal edilen isin kalintisi silinsin - `DownloadQueueService.mark_cancelled()` isi bellekten ve gecmis DB'sinden (yeni `HistoryRepository.delete()`) tamamen siliyor; ayrica `DownloadEngine` progress hook'ta yt-dlp `tmpfilename`/`filename` yollarini biriktirip `CancelledDownload`'da `.part`/`.ytdl`/`.temp`/fragment dosyalarini indirilenler klasorunden siliyor (bozuk dosya kalmiyor). Detay: [[mimari]] "Kuyruk ve Gecmis Semantigi".
+
+## [2026-07-04] FIX | Instagram cookie kodu geri alindi, gercek kok neden Instagram API degisikligi
+
+"Instagram reels inmiyor" raporu derinlemesine incelendi. Bu oturumda cozum diye eklenen `cookiesfrombrowser` (Chrome/Firefox) fallback zinciri hem gurultu cikardi hem sorunu cozmedi. Kanitlanmis gercek kok neden: **Instagram 2-3 Temmuz 2026 civari API'sini degistirip reels/gonderiler icin login zorunlu hale getirdi** - kod/uygulama sorunu degil. Kanit: (1) ayni reel hic cookie olmadan da "empty media response" veriyor, (2) sahte/var olmayan reel ID'si bile ayni hatayi veriyor (genel login duvari, post bazli degil), (3) YouTube cookie'siz sorunsuz iniyor, (4) yt-dlp bug tracker #17074/#17124 (2-3 Temmuz) dunya capinda ayni sikayetle dolu, bakimci extractor'da degisiklik olmadigini dogruluyor, (5) Chrome cookie'si zaten okunamiyor (#10927 ABE), Firefox kurulu degil. Kullanici karari: cookie karmasasi tamamen geri alindi (temiz no-cookie orijinal hal), `_friendly_error()` ile login-duvari hatasi net Turkce mesaja cevrildi. Gercek cozum (uygulama-ici QtWebEngine login) ayri/sonraki gorev olarak ertelendi. Detay: [[hata_yonetimi_ve_loglama]].
+
+## [2026-07-04] FIX | UI ceviri hatasi, gizli ModuleNotFoundError riski, native crash yakalama
+
+Devam eden "Instagram reels cokuyor" raporu incelenirken uc ayri sorun bulundu: (1) `_queue_row`/`_history_row` birbirine ters `_job_summary`/`_history_summary` cagiriyordu, aktif kuyrukta ham Ingilizce "queued"/"running" gorunuyordu - fonksiyonlar dogru yerlere baglandi, fallback "Bilinmiyor" yapildi. (2) yt_dlp `--exclude-module` ile build'den harici tutuldugu icin PyInstaller onun stdlib bagimliliklarini (`optparse`, `http.cookies`) algilayamiyordu - HER indirmeyi etkileyebilecek gizli bir hata; yt_dlp artik exclude edilmiyor, normal analiz edilip yedek olarak gomuluyor (harici, guncellenebilir kopya yine de sys.path onceligiyle her zaman kazaniyor - canli test ile kanitlandi). (3) `faulthandler` eklendi (`logs/native_crash.log`) - Python exception olarak yakalanamayan native cokmeler icin. Log konumu da `~/.baglanti_indirici/` yerine uygulama dizinine (`logs/`) tasindi, kolay bulunsun diye. Detay: [[hata_yonetimi_ve_loglama]], [[yt_dlp_oto_guncelleme]].
+
+## [2026-07-04] FIX | Exe çökmesi giderildi, loglama sistemi eklendi
+
+Kullanıcı Instagram/YouTube URL'lerinden indirirken exe'nin sessizce çöktüğünü bildirdi. Kök neden: `enqueue_download` zincirinde (`controller.py` → `queue/service.py` → `platform/registry.py::normalize_url`) try/except yoktu; bozuk URL'lerde `urllib.parse.urlparse` fırlattığı `ValueError` bir Qt slot'unda yakalanmadan PyQt5'i sonlandırıyordu (doğrulandı: `http://[bozuk` ile canlı reprodüksiyon). `core/logger.py` eklendi (dosya tabanlı loglama + global `sys.excepthook` güvenlik ağı), somut boşluk try/except ile kapatıldı, worker'lardaki sessiz hata kayıpları loglamaya bağlandı. Detay: [[hata_yonetimi_ve_loglama]].
+
 ## [2026-07-04] LINT | Wiki tutarlılık kontrolü ve düzeltme
 
 `docs/wiki/` tarandı: bağlantı bütünlüğü sorunsuz (kırık link/öksüz sayfa yok). İki bulgu düzeltildi: [[rules]] içindeki commit tipi listesi gerçek git geçmişiyle uyumlu hale getirildi (`build` kaldırıldı — hiç kullanılmamış; `core` eklendi — en çok kullanılan tip, 8 commit). `log.md`'deki kendine referans (`[[log]]` self-link) düz metne çevrildi.

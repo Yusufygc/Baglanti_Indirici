@@ -1,8 +1,11 @@
 from core.domain import DownloadOptions, JobStatus
 from core.download.worker import DownloadQueueWorker
 from core.history import HistoryRepository
+from core.logger import get_logger
 from core.queue import DownloadQueueService
 from core.update.worker import UpdateCheckWorker, UpdateInstallWorker
+
+logger = get_logger("controller")
 
 
 class MainWindowController:
@@ -33,15 +36,21 @@ class MainWindowController:
         return self.enqueue_download(url, download_dir, mode, filename, is_playlist)
 
     def enqueue_download(self, url, download_dir, mode, filename, is_playlist):
-        job = self.queue_service.enqueue(
-            url,
-            DownloadOptions(
-                download_dir=download_dir,
-                mode=mode,
-                filename=filename,
-                is_playlist=is_playlist,
-            ),
-        )
+        try:
+            job = self.queue_service.enqueue(
+                url,
+                DownloadOptions(
+                    download_dir=download_dir,
+                    mode=mode,
+                    filename=filename,
+                    is_playlist=is_playlist,
+                ),
+            )
+        except Exception as exc:
+            logger.exception("Kuyruga ekleme basarisiz: url=%s", url)
+            self.view.set_status(f"Gecersiz baglanti: {exc}", error=True)
+            return None
+
         self.view.upsert_queue_job(job)
         self.view.set_status(f"Kuyruga eklendi: {job.platform}")
         self._ensure_worker()
@@ -90,9 +99,29 @@ class MainWindowController:
         elif job.status == JobStatus.COMPLETED:
             self.view.set_status("Indirme tamamlandi.")
         elif job.status == JobStatus.FAILED:
-            self.view.set_status(job.error_message or "Indirme basarisiz.", error=True)
+            self._handle_failed_job(job)
         elif job.status == JobStatus.CANCELLED:
             self.view.set_status("Indirme iptal edildi.", error=True)
+
+    def _handle_failed_job(self, job):
+        from core.instagram import session as ig_session
+
+        message = job.error_message or "Indirme basarisiz."
+        if ig_session.INSTAGRAM_LOGIN_REQUIRED_MSG in message:
+            if ig_session.has_session():
+                # Oturum var ama yine login duvarina takildi -> suresi dolmus.
+                ig_session.clear_session()
+                self.view.prompt_instagram_login(
+                    "Instagram oturumu suresi dolmus. 'Instagram Giris' butonuna "
+                    "tiklayip tekrar giris yapin."
+                )
+            else:
+                self.view.prompt_instagram_login(
+                    "Instagram girisi gerekiyor. Ust taraftaki 'Instagram Giris' "
+                    "butonuna tiklayip giris yapin."
+                )
+            return
+        self.view.set_status(message, error=True)
 
     def _on_queue_idle(self):
         self.clear_worker()

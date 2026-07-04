@@ -47,14 +47,17 @@ class HistoryRepository:
             )
 
     def list_recent(self, limit: int = 50) -> list[DownloadJob]:
+        # Gecmis yalnizca BASARIYLA tamamlanan indirmeleri gosterir; basarisiz
+        # veya iptal edilen isler gecmise dusmemelidir.
         with self._connect() as conn:
             rows = conn.execute(
                 """
                 SELECT * FROM download_history
+                WHERE status = ?
                 ORDER BY COALESCE(finished_at, started_at, created_at) DESC
                 LIMIT ?
                 """,
-                (limit,),
+                (JobStatus.COMPLETED.value, limit),
             ).fetchall()
         return [self._job_from_row(row) for row in rows]
 
@@ -65,6 +68,10 @@ class HistoryRepository:
                 (job_id,),
             ).fetchone()
         return self._job_from_row(row) if row else None
+
+    def delete(self, job_id: str) -> None:
+        with self._connect() as conn:
+            conn.execute("DELETE FROM download_history WHERE id = ?", (job_id,))
 
     def clear(self) -> None:
         with self._connect() as conn:

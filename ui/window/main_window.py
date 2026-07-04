@@ -145,12 +145,17 @@ class MainWindow(QWidget):
         self.btn_theme_toggle.setObjectName("themeToggleButton")
         self.btn_theme_toggle.setFixedWidth(46)
         self.btn_theme_toggle.setFixedHeight(38)
+        self.btn_instagram_login = ModernButton(
+            self._instagram_button_label(), "secondary", self._open_instagram_login
+        )
+        self.btn_instagram_login.setFixedHeight(38)
         title = HeaderLabel("Bağlantı İndirici")
         title.setAlignment(Qt.AlignCenter)
         self.btn_history_page = ModernButton("Geçmiş", "secondary", self._show_history_page)
         self.btn_history_page.setFixedWidth(88)
         self.btn_history_page.setFixedHeight(38)
         top_row.addWidget(self.btn_theme_toggle, alignment=Qt.AlignLeft | Qt.AlignTop)
+        top_row.addWidget(self.btn_instagram_login, alignment=Qt.AlignLeft | Qt.AlignTop)
         top_row.addWidget(title, stretch=1)
         top_row.addWidget(self.btn_history_page, alignment=Qt.AlignRight | Qt.AlignTop)
         layout.addLayout(top_row)
@@ -161,6 +166,33 @@ class MainWindow(QWidget):
         self._theme_name = "light" if self._theme_name == "dark" else "dark"
         save_theme(self._theme_name)
         self._apply_theme()
+
+    def _instagram_button_label(self) -> str:
+        from core.instagram import session as ig_session
+        return "Instagram ✓" if ig_session.has_session() else "Instagram Giriş"
+
+    def _refresh_instagram_button(self) -> None:
+        if hasattr(self, "btn_instagram_login"):
+            self.btn_instagram_login.setText(self._instagram_button_label())
+
+    def _open_instagram_login(self, *_args) -> None:
+        try:
+            from ui.window.instagram_login_dialog import InstagramLoginDialog
+        except Exception as exc:  # QtWebEngine yuklenemezse zarif hata
+            self.set_status(f"Giriş özelliği yüklenemedi: {exc}", error=True)
+            return
+        dialog = InstagramLoginDialog(self)
+        result = dialog.exec_()
+        self._refresh_instagram_button()
+        if result == dialog.Accepted:
+            self.set_status("Instagram girişi kaydedildi.")
+        else:
+            self.set_status("Instagram giriş penceresi kapatıldı.")
+
+    def prompt_instagram_login(self, message: str) -> None:
+        """Login duvarina takilinca controller tarafindan cagrilir."""
+        self.set_status(message, error=True)
+        self._refresh_instagram_button()
 
     def _apply_theme(self) -> None:
         self.setStyleSheet(StyleManager.get_main_stylesheet(self._theme_name))
@@ -220,6 +252,7 @@ class MainWindow(QWidget):
 
         self.url_input = ModernInput(placeholder="URL yapıştırın…")
         self.url_input.textChanged.connect(self._on_url_changed)
+        self.url_input.returnPressed.connect(self._start_download)
         layout.addWidget(self.url_input)
 
         self.lbl_url_feedback = QLabel("")
@@ -259,6 +292,7 @@ class MainWindow(QWidget):
         layout.addWidget(lbl_name)
 
         self.filename_input = ModernInput("Varsayılan dosya adı kullanılacak")
+        self.filename_input.returnPressed.connect(self._start_download)
         layout.addWidget(self.filename_input)
 
         lbl_helper = QLabel("Boş bırakırsanız orijinal ad kullanılır.")
@@ -503,14 +537,13 @@ class MainWindow(QWidget):
         if not hasattr(self, "history_list_layout"):
             return
         self._clear_layout(self.history_list_layout)
-        finished_jobs = [
-            job for job in jobs
-            if job.status in (JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED)
-        ]
-        if not finished_jobs:
+        # Gecmis yalnizca basariyla tamamlanan indirmeleri gosterir; basarisiz
+        # veya iptal edilen isler burada listelenmez.
+        completed_jobs = [job for job in jobs if job.status == JobStatus.COMPLETED]
+        if not completed_jobs:
             self.history_list_layout.addWidget(self._empty_label("Gecmis kaydi yok."))
             return
-        for job in finished_jobs:
+        for job in completed_jobs:
             self.history_list_layout.addWidget(self._history_row(job))
 
     def _queue_row(self, job) -> QFrame:
@@ -520,7 +553,7 @@ class MainWindow(QWidget):
         layout.setContentsMargins(10, 8, 10, 8)
         layout.setSpacing(10)
 
-        text = QLabel(self._history_summary(job))
+        text = QLabel(self._job_summary(job))
         text.setObjectName("statusBarText")
         text.setWordWrap(True)
         layout.addWidget(text, stretch=1)
@@ -538,7 +571,7 @@ class MainWindow(QWidget):
         layout.setContentsMargins(10, 8, 10, 8)
         layout.setSpacing(10)
 
-        text = QLabel(self._job_summary(job))
+        text = QLabel(self._history_summary(job))
         text.setObjectName("statusBarText")
         text.setWordWrap(True)
         layout.addWidget(text, stretch=1)
@@ -568,7 +601,7 @@ class MainWindow(QWidget):
         filename = self._display_name(job, allow_url=True)
         detail = job.error_message or job.status_message
         return (
-            f"{job.platform} - {status_labels.get(job.status, job.status.value)} "
+            f"{job.platform} - {status_labels.get(job.status, 'Bilinmiyor')} "
             f"- %{job.progress_percent}\n{filename}\n{detail}"
         )
 
@@ -581,7 +614,7 @@ class MainWindow(QWidget):
         name = self._display_name(job, allow_url=False)
         detail = job.error_message or job.status_message
         return (
-            f"{job.platform} - {status_labels.get(job.status, job.status.value)} "
+            f"{job.platform} - {status_labels.get(job.status, 'Bilinmiyor')} "
             f"- %{job.progress_percent}\n{name}\n{detail}"
         )
 

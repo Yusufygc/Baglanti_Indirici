@@ -1,10 +1,13 @@
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 
 from core.domain import DownloadOptions
+from core.logger import get_logger
 from core.platform.service import PlatformService
 
 from .errors import DownloadError
 from .service import CancelledDownload, DownloadEvents, DownloadRequest, DownloadService
+
+logger = get_logger("download_worker")
 
 
 class WorkerSignals(QObject):
@@ -123,6 +126,7 @@ class DownloadQueueWorker(QThread):
                 if updated:
                     self.signals.job_updated.emit(updated)
             except CancelledDownload:
+                logger.info("Indirme iptal edildi: job_id=%s url=%s", job.id, job.normalized_url)
                 updated = self.queue_service.mark_cancelled(job.id)
                 if updated:
                     self.signals.job_updated.emit(updated)
@@ -131,10 +135,18 @@ class DownloadQueueWorker(QThread):
                 if updated:
                     self.signals.job_updated.emit(updated)
             except DownloadError as exc:
+                logger.warning(
+                    "Indirme hatasi: job_id=%s platform=%s url=%s hata=%s",
+                    job.id, job.platform, job.normalized_url, exc,
+                )
                 updated = self.queue_service.mark_failed(job.id, f"Indirme hatasi: {exc}")
                 if updated:
                     self.signals.job_updated.emit(updated)
             except Exception as exc:
+                logger.exception(
+                    "Beklenmeyen indirme hatasi: job_id=%s platform=%s url=%s",
+                    job.id, job.platform, job.normalized_url,
+                )
                 updated = self.queue_service.mark_failed(job.id, f"Beklenmeyen hata: {exc}")
                 if updated:
                     self.signals.job_updated.emit(updated)

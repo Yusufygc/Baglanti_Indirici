@@ -26,8 +26,9 @@ Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
 Name: "desktopicon"; Description: "Masaustu simgesi olustur"; GroupDescription: "Ek simgeler:"
 
 [Files]
-Source: "dist\BaglantiIndirici.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "dist\lib\yt_dlp\*"; DestDir: "{app}\lib\yt_dlp"; Flags: ignoreversion recursesubdirs createallsubdirs
+; onedir build: exe + tum bagimliliklar (DLL'ler, QtWebEngineProcess.exe,
+; kaynaklar, lib\yt_dlp) dist\BaglantiIndirici\ klasorunde. Klasorun tamami {app}'e.
+Source: "dist\BaglantiIndirici\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

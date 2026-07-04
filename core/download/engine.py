@@ -1,3 +1,4 @@
+import glob
 import os
 from dataclasses import replace
 
@@ -21,11 +22,13 @@ class DownloadEngine:
         self.yt_dlp_client = yt_dlp_client
         self.web_extractor = web_extractor or WebMediaExtractor
         self.platform_service = platform_service or PlatformService
+        self._partial_files = set()
 
     def cancel(self):
         self.yt_dlp_client.cancel()
 
     def run(self, request, events, is_cancelled):
+        self._partial_files = set()
         normalized_url = self.platform_service.normalize_url(request.url)
         platform = self.platform_service.detect(normalized_url)
         if not self.platform_service.is_supported(platform):
@@ -40,12 +43,18 @@ class DownloadEngine:
         self._raise_if_cancelled(is_cancelled)
 
         try:
-            self._download(request, target_dir, events, is_cancelled)
-        except DownloadError as exc:
-            if platform != "Web" or "Unsupported URL" not in str(exc):
-                raise
-            self._raise_if_cancelled(is_cancelled)
-            self._download_with_web_fallback(request, target_dir, events, is_cancelled)
+            try:
+                self._download(request, target_dir, events, is_cancelled)
+            except DownloadError as exc:
+                if platform != "Web" or "Unsupported URL" not in str(exc):
+                    raise
+                self._raise_if_cancelled(is_cancelled)
+                self._download_with_web_fallback(request, target_dir, events, is_cancelled)
+        except CancelledDownload:
+            # Iptal edildiginde indirilenler klasorunde kalan yarim/bozuk
+            # dosyalari (.part, .ytdl, fragment'lar) temizle.
+            self._cleanup_partial_files()
+            raise
 
     def _download(self, request, target_dir, events, is_cancelled, url=None, http_headers=None):
         options = self.yt_dlp_client.build_options(
@@ -83,6 +92,9 @@ class DownloadEngine:
 
     def _progress_hook(self, events, is_cancelled):
         def hook(data):
+            # Yarim dosya yollarini iptal kontrolunden ONCE kaydet ki iptal
+            # aninda hangi dosyalarin silinecegi bilinsin.
+            self._record_partial(data)
             self._raise_if_cancelled(is_cancelled)
             title = data.get("info_dict", {}).get("title")
             if title:
@@ -93,6 +105,32 @@ class DownloadEngine:
                 events.progress(percent, message)
 
         return hook
+
+    def _record_partial(self, data):
+        for key in ("tmpfilename", "filename"):
+            path = data.get(key)
+            if path:
+                self._partial_files.add(path)
+
+    def _cleanup_partial_files(self):
+        for path in list(self._partial_files):
+            for candidate in self._partial_candidates(path):
+                try:
+                    if os.path.isfile(candidate):
+                        os.remove(candidate)
+                except OSError:
+                    pass  # silme basarisiz olursa sessizce gec (dosya kilitli vb.)
+        self._partial_files.clear()
+
+    @staticmethod
+    def _partial_candidates(path):
+        # yt-dlp'nin biraktigi yarim/gecici dosyalar: hedef dosyanin kendisi +
+        # .part / .ytdl / .temp uzantilari + parcali (fragment) indirmeler.
+        candidates = {path, path + ".part", path + ".ytdl", path + ".temp"}
+        candidates.update(glob.glob(glob.escape(path) + ".part-Frag*"))
+        if path.endswith(".part"):
+            candidates.add(path[:-len(".part")])
+        return candidates
 
     @staticmethod
     def _prepare_directory(download_dir, platform_name):

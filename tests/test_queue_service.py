@@ -25,6 +25,18 @@ def test_queue_service_cancels_queued_job(tmp_path):
     assert queue.next_job() is None
 
 
+def test_queue_service_cancel_purges_remnant(tmp_path):
+    repo = HistoryRepository(str(tmp_path / "history.sqlite3"))
+    queue = DownloadQueueService(repo)
+    job = queue.enqueue("https://example.com/1", DownloadOptions(download_dir=str(tmp_path)))
+
+    queue.cancel(job.id)
+
+    # Kalinti kalmamali: ne bellekte ne gecmis DB'sinde iz olmali.
+    assert job.id not in {j.id for j in queue.list_jobs()}
+    assert repo.get(job.id) is None
+
+
 def test_queue_service_retries_from_history(tmp_path):
     repo = HistoryRepository(str(tmp_path / "history.sqlite3"))
     queue = DownloadQueueService(repo)

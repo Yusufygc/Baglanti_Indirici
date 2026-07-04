@@ -1,9 +1,12 @@
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 
 from core.config import get_yt_dlp_lib_dir
+from core.logger import get_logger
 
 from .errors import UpdateError
 from .yt_dlp_updater import YtDlpUpdater
+
+logger = get_logger("update_worker")
 
 
 def _default_updater():
@@ -38,8 +41,10 @@ class UpdateCheckWorker(QThread):
             else:
                 self.signals.up_to_date.emit()
         except UpdateError as exc:
+            logger.warning("yt-dlp guncelleme kontrolu basarisiz: %s", exc)
             self.signals.error.emit(str(exc))
         except Exception as exc:
+            logger.exception("yt-dlp guncelleme kontrolunde beklenmeyen hata")
             self.signals.error.emit(f"Beklenmeyen hata: {exc}")
 
 
@@ -65,6 +70,8 @@ class UpdateInstallWorker(QThread):
             updater.install_update(self.release, progress_callback=self.signals.progress.emit)
             self.signals.completed.emit(self.release.version)
         except UpdateError as exc:
+            logger.warning("yt-dlp guncelleme kurulumu basarisiz: %s", exc)
             self.signals.error.emit(str(exc))
         except Exception as exc:
+            logger.exception("yt-dlp guncelleme kurulumunda beklenmeyen hata")
             self.signals.error.emit(f"Beklenmeyen hata: {exc}")

@@ -107,12 +107,20 @@ class DownloadQueueService:
         with self._lock:
             self._running.discard(job_id)
             self._cancel_requested.discard(job_id)
-        return self._update_job(
-            job_id,
-            status=JobStatus.CANCELLED,
-            finished_at=utc_now_iso(),
-            status_message="Iptal edildi",
-        )
+            job = self._jobs.get(job_id)
+            if not job:
+                return None
+            cancelled = job.update(
+                status=JobStatus.CANCELLED,
+                finished_at=utc_now_iso(),
+                status_message="Iptal edildi",
+            )
+            # Iptal edilen isin kalintisini birakma: bellekten ve gecmis
+            # veritabanindan tamamen sil (sadece UI'a durum bildirmek icin doner).
+            self._jobs.pop(job_id, None)
+            if self.history_repository:
+                self.history_repository.delete(job_id)
+            return cancelled
 
     def cancel(self, job_id: str) -> DownloadJob | None:
         with self._lock:
