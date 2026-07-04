@@ -432,6 +432,7 @@ class MainWindow(QWidget):
     def show_update_available(self, version: str) -> None:
         self.btn_yt_dlp_update.setText(f"yt-dlp {version} mevcut - Güncelle")
         self.btn_yt_dlp_update.show()
+        self.set_status(f"yt-dlp {version} güncellemesi mevcut - aşağıdaki butona tıklayarak güncelleyebilirsiniz")
 
     def show_update_installing(self) -> None:
         self.btn_yt_dlp_update.setText("Güncelleniyor... %0")
@@ -750,7 +751,7 @@ class MainWindow(QWidget):
         color = "#FF4757" if error else "#00d4ff"
         self.lbl_status_bar.setText(text)
         self.lbl_status_bar.setStyleSheet(
-            f"font-size:12px; font-weight:600; color:{color};"
+            f"background: transparent; font-size:12px; font-weight:600; color:{color};"
         )
 
     def _set_ready(self, ready: bool) -> None:

@@ -73,12 +73,14 @@ def container_styles(t):
             font-size: {fs["status"]}px;
             font-weight: 700;
             color: {t["text"]};
+            background: transparent;
         }}
 
         #footerText {{
             color: {t["text"]};
             font-family: {FontManager.mono_stack()};
             font-size: {fs["footer"]}px;
+            background: transparent;
         }}
 
         #detailLabel {{
