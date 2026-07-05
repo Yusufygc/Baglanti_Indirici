@@ -20,8 +20,7 @@ from core.logger import enable_native_crash_dump, get_logger, install_excepthook
 install_excepthook()
 enable_native_crash_dump()
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 from ui.assets.font_manager import FontManager
 from ui.window.main_window import MainWindow
 
@@ -32,9 +31,6 @@ def main():
     logger = get_logger("app")
     logger.info("Uygulama basladi")
 
-    # QtWebEngine (Instagram giris penceresi) icin: QApplication olusturulmadan
-    # ONCE ayarlanmali, yoksa gomulu tarayici acilirken cokebilir.
-    QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
     app = QApplication(sys.argv)
     FontManager.load_fonts()
     app.setFont(FontManager.application_font())
@@ -43,7 +39,7 @@ def main():
     window = MainWindow()
     window.show()
 
-    exit_code = app.exec_()
+    exit_code = app.exec()
     logger.info("Uygulama kapandi (exit_code=%s)", exit_code)
     sys.exit(exit_code)
 

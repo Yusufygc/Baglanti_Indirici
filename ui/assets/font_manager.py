@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-from PyQt5.QtGui import QFont, QFontDatabase
+from PySide6.QtGui import QFont, QFontDatabase
 
 from ui.themeing.font_profiles import get_font_profile
 
@@ -57,11 +57,12 @@ class FontManager:
 
     @classmethod
     def _family_available(cls, family):
-        return family in QFontDatabase().families()
+        # Qt6/PySide6: QFontDatabase metodlari statik (instance olusturulmaz).
+        return family in QFontDatabase.families()
 
     @classmethod
     def _first_available(cls, candidates, fallback):
-        families = set(QFontDatabase().families())
+        families = set(QFontDatabase.families())
         for family in candidates:
             if family in families:
                 return family

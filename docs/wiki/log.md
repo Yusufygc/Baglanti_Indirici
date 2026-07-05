@@ -2,6 +2,14 @@
 
 Kronolojik kayıt, en yeni en üstte. Format: `## [YYYY-AA-GG] [İŞLEM_TİPİ] | Kısa Açıklama`
 
+## [2026-07-05] FEATURE | Instagram login: gomulu QtWebEngine terk, kullanicinin gercek Chrome'u + CDP
+
+Gomulu tarayici (once PyQt5, sonra PySide6 QtWebEngine) Instagram giris duvarini gecemedi: PyQt5 reCAPTCHA'ya, PySide6 Qt6 ise risk-tabanli giris zorlamasina (`is_from_rle` -> passkey/WebAuthn; gomulu motor WebAuthn yapamiyor) takildi, dogrudan login'e geri atiyordu. Kesin cozum: gomulu tarayiciyi tamamen birak, kullanicinin **kendi kurulu Chrome/Edge**'ini ayri bir `--user-data-dir` + `--remote-debugging-port` ile ac; kullanici gercek tarayicida normal giris yapar (passkey/reCAPTCHA hepsi calisir), uygulama **Chrome DevTools Protocol** (CDP) ile calisan tarayicinin cerezlerini HAFIZADAN okur (HttpOnly `sessionid` dahil) — diskteki App-Bound Encryption'a (ABE, yt-dlp #10927) hic dokunmadan. CDP icin `QtWebSockets`+`QtNetwork` (PySide6-Essentials) kullanilir; QtWebEngine artik kullanilmiyor. `instagram_login_dialog.py` bastan yazildi (CDP surucusu); `session.py`'ye `find_browser_executable()` + `cdp_cookies_to_netscape()` eklendi; `main.py`'den QtWebEngine'e ozel `AA_ShareOpenGLContexts` kaldirildi. 62 test geciyor. **5 Temmuz 2026: uctan uca dogrulandi — login basarili, login-gerekli reels indi.** Detay: [[instagram_login]], [[paketleme]], [[mimari]].
+
+## [2026-07-05] REFACTOR | Tum proje PyQt5 -> PySide6'ya tasindi (Qt6)
+
+Gomulu PyQt5 QtWebEngine login, Meta reCAPTCHA'sini gecemedi (PyQt5 Qt 5.15'e / Chromium ~87'ye kilitli). Ilk plan: tum projeyi PySide6'ya (Qt6, guncel Chromium) tasiyip gomulu login'i yeni motorla denemek. 8 dosya: import swap (`PyQt5` -> `PySide6`), `pyqtSignal`->`Signal`, `pyqtSlot`->`Slot`, `.exec_()`->`.exec()`, `QFontDatabase` statik cagri. Bagimlilik: `PyQt5`/`PyQtWebEngine` kaldirildi, `PySide6>=6.8` eklendi. (Not: Qt6 QtWebEngine de giris duvarini gecemedi; nihai cozum icin ustteki CDP girisine bakiniz — PySide6 gecisi kalici oldu, gomulu QtWebEngine ise terk edildi.) Detay: [[mimari]].
+
 ## [2026-07-04] FEATURE | Instagram uygulama-ici login (gomulu QtWebEngine) + kalici oturum
 
 Instagram login duvari icin gercek cozum: uygulama-ici gomulu QtWebEngine giris penceresi. Kullanici bir kez giris yapar (sifre uygulamada tutulmaz), oturum cerezleri (HttpOnly sessionid dahil) yakalanip Netscape cookies.txt'e yazilir, yt-dlp'ye `cookiefile` olarak verilir. Yeni: `core/instagram/session.py` (saf), `ui/window/instagram_login_dialog.py` (QtWebEngine, lazy import). Header'a "Instagram Giris" butonu; login duvarina takilan indirmede controller otomatik yonlendiriyor (oturum dolmussa temizleyip yeniden giris istiyor). QtWebEngine icin `main.py`'de `AA_ShareOpenGLContexts` + build **onedir**'e gecti (onefile'da QtWebEngine guvenilmez), `installer.iss` tum klasoru paketliyor. `PyQtWebEngine` bagimliligi eklendi. Detay: [[instagram_login]], [[paketleme]].

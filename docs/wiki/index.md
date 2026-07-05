@@ -8,7 +8,7 @@ Bu dosya wiki'nin giriş noktasıdır. Kod yazmadan, mimari karar vermeden veya 
 - [[yt_dlp_oto_guncelleme]] — yt-dlp'nin exe dışına taşınması ve PyPI tabanlı oto-güncelleme sistemi (`core/update/`).
 - [[tema_sistemi]] — Koyu/açık tema paleti, toggle mekanizması, kalıcı tercih (`ui/themeing/`, `core/settings.py`).
 - [[hata_yonetimi_ve_loglama]] — Global `sys.excepthook` güvenlik ağı ve dosya tabanlı loglama sistemi (`core/logger.py`).
-- [[instagram_login]] — Gömülü QtWebEngine ile uygulama-içi Instagram girişi, kalıcı oturum ve yt-dlp'ye cookie aktarımı (`core/instagram/`, `ui/window/instagram_login_dialog.py`).
+- [[instagram_login]] — Kullanıcının gerçek Chrome'unu CDP ile sürerek Instagram girişi (HttpOnly `sessionid` hafızadan, ABE bypass), kalıcı oturum ve yt-dlp'ye cookie aktarımı (`core/instagram/`, `ui/window/instagram_login_dialog.py`).
 
 ## Build & Dağıtım
 

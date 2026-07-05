@@ -1,9 +1,9 @@
 import sys
 import os
 from pathlib import Path
-from PyQt5.QtWidgets import QApplication, QStyle
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QSize
+from PySide6.QtWidgets import QApplication, QStyle
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import QSize
 
 
 class IconManager:

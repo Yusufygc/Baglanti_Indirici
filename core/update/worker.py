@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from PySide6.QtCore import QObject, QThread, Signal
 
 from core.config import get_yt_dlp_lib_dir
 from core.logger import get_logger
@@ -17,9 +17,9 @@ def _default_updater():
 
 
 class UpdateCheckSignals(QObject):
-    update_available = pyqtSignal(object)   # ReleaseInfo
-    up_to_date = pyqtSignal()
-    error = pyqtSignal(str)
+    update_available = Signal(object)   # ReleaseInfo
+    up_to_date = Signal()
+    error = Signal(str)
 
 
 class UpdateCheckWorker(QThread):
@@ -49,9 +49,9 @@ class UpdateCheckWorker(QThread):
 
 
 class UpdateInstallSignals(QObject):
-    progress = pyqtSignal(int)
-    completed = pyqtSignal(str)   # yeni surum
-    error = pyqtSignal(str)
+    progress = Signal(int)
+    completed = Signal(str)   # yeni surum
+    error = Signal(str)
 
 
 class UpdateInstallWorker(QThread):

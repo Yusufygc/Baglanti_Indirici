@@ -14,7 +14,7 @@ python -m venv .venv
 ## PyInstaller (`build_pyinstaller.bat`)
 
 - **`--onedir --windowed`** (onefile DEĞİL), ikon `icons/icon.ico`, veri: `icons/`, `ui/assets/fonts/`.
-- **Neden onedir:** Instagram giriş penceresi `QtWebEngine` kullanır (bkz. [[instagram_login]]); QtWebEngine onefile'da güvenilmez (`QtWebEngineProcess.exe` bulunamıyor, yavaş açılış). onedir'de tüm bağımlılıklar (DLL'ler, `QtWebEngineProcess.exe`, kaynaklar) exe'nin yanında klasörde durur. PyInstaller'ın PyQt5 hook'ları QtWebEngine'i otomatik toplar (`instagram_login_dialog.py` import grafiğinde olduğu için).
+- **Neden onedir:** Dağıtım Inno Setup installer ile yapılır (bkz. `installer.iss`) ve tüm `BaglantiIndirici/` klasörünü paketler; onedir bu akışa uyar ve harici güncellenebilir `lib/yt_dlp/` kopyasını exe'nin yanında tutmayı kolaylaştırır. (Not: Instagram girişi artık gömülü `QtWebEngine` değil, kullanıcının kendi Chrome'unu CDP ile sürüyor — bkz. [[instagram_login]] — yani QtWebEngine bağımlılığı yok; teknik olarak onefile de mümkün, ancak mevcut installer akışı için onedir korunuyor. CDP için gereken `QtWebSockets`/`QtNetwork` PySide6-Essentials'ta, PyInstaller PySide6 hook'larıyla otomatik toplanır.)
 - **Taşınabilirlik:** onedir'de çıplak exe tek başına taşınamaz (klasörüne bağımlı). "Her yerden çalıştırma" installer'ın kurduğu kısayolla veya TÜM `BaglantiIndirici/` klasörünü kopyalayarak olur.
 - `--add-binary "ffmpeg.exe;."` — ffmpeg pakete dahil (onedir klasör kökünde, `_MEIPASS`'ten çözülür).
 - `yt_dlp` **exclude edilmiyor** — normal analiz edilip gömülü yedek olarak dahil edilir (bkz. [[yt_dlp_oto_guncelleme]]).

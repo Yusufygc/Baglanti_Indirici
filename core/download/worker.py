@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from PySide6.QtCore import QObject, QThread, Signal
 
 from core.domain import DownloadOptions
 from core.logger import get_logger
@@ -11,18 +11,18 @@ logger = get_logger("download_worker")
 
 
 class WorkerSignals(QObject):
-    platform_detected = pyqtSignal(str)
-    folder_prepared = pyqtSignal(str)
-    started = pyqtSignal(str)
-    progress = pyqtSignal(int, str)
-    finished = pyqtSignal()
-    cancelled = pyqtSignal()
-    error = pyqtSignal(str)
+    platform_detected = Signal(str)
+    folder_prepared = Signal(str)
+    started = Signal(str)
+    progress = Signal(int, str)
+    finished = Signal()
+    cancelled = Signal()
+    error = Signal(str)
 
 
 class QueueWorkerSignals(QObject):
-    job_updated = pyqtSignal(object)
-    queue_idle = pyqtSignal()
+    job_updated = Signal(object)
+    queue_idle = Signal()
 
 
 class DownloadWorker(QThread):

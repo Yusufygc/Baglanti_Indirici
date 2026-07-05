@@ -2,7 +2,7 @@
 
 Bkz. [[index]] için genel harita.
 
-PyQt5 masaüstü uygulaması; UI ve iş mantığı ayrı katmanlarda tutulur.
+PySide6 masaüstü uygulaması; UI ve iş mantığı ayrı katmanlarda tutulur.
 
 ## Katmanlar
 
@@ -24,16 +24,16 @@ ui/
 ├── themeing/               # Renk paleti, QSS uretimi - bkz. [[tema_sistemi]]
 ├── widgets/                # ModernCard, ModernButton, ModernInput, SegmentControl
 └── assets/                 # Font yonetimi, ikonlar
-tests/                    # pytest, PyQt5 gerektirmeyen modüller icin GUI'siz calisir
+tests/                    # pytest, PySide6 gerektirmeyen modüller icin GUI'siz calisir
 ```
 
 ## Kritik Prensip: Controller/Worker Ayrımı
 
-`ui/window/controller.py` (`MainWindowController`) UI ile iş mantığı arasındaki köprüdür. Ağır işler (indirme, güncelleme kontrolü/kurulumu) `QThread` alt sınıflarında (`core/download/worker.py`, `core/update/worker.py`) çalışır; UI thread'i asla bloklanmaz. Yeni bir arka plan işi eklerken bu deseni tekrarla: `WorkerSignals` (QObject + pyqtSignal) + `QThread.run()` + controller'da `_ensure_worker`/`factory` enjeksiyonu (test edilebilirlik için).
+`ui/window/controller.py` (`MainWindowController`) UI ile iş mantığı arasındaki köprüdür. Ağır işler (indirme, güncelleme kontrolü/kurulumu) `QThread` alt sınıflarında (`core/download/worker.py`, `core/update/worker.py`) çalışır; UI thread'i asla bloklanmaz. Yeni bir arka plan işi eklerken bu deseni tekrarla: `WorkerSignals` (QObject + Signal) + `QThread.run()` + controller'da `_ensure_worker`/`factory` enjeksiyonu (test edilebilirlik için).
 
 ## Test Edilebilirlik Notu
 
-`core/*/__init__.py` dosyaları bilerek PyQt5 gerektiren `worker.py` modüllerini re-export **etmez** (örn. `core/download/__init__.py`, `core/update/__init__.py`). Böylece `tests/` klasöründeki testler PyQt5 kurulu olmayan ortamlarda da çalışabilir. Worker sınıfları her zaman `from core.X.worker import Y` şeklinde doğrudan alt modülden import edilir (bkz. `ui/window/controller.py`).
+`core/*/__init__.py` dosyaları bilerek PySide6 gerektiren `worker.py` modüllerini re-export **etmez** (örn. `core/download/__init__.py`, `core/update/__init__.py`). Böylece `tests/` klasöründeki testler PySide6 kurulu olmayan ortamlarda da çalışabilir. Worker sınıfları her zaman `from core.X.worker import Y` şeklinde doğrudan alt modülden import edilir (bkz. `ui/window/controller.py`).
 
 ## Kuyruk ve Geçmiş Semantiği
 

@@ -31,3 +31,6 @@ Thumbs.db
 *.exe
 
 *.bat
+
+# Kimlik bilgisi / test artefaktlari (asla commit'lenmemeli)
+instaUrl.txt

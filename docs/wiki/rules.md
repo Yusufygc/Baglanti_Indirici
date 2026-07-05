@@ -20,7 +20,7 @@ Kullanılan tipler (repo geçmişinden): `feat`, `fix`, `ui`, `core`, `tests`, `
 - **Yorum yazma, gerekmedikçe:** Sadece "neden" açık olmayan yerlerde (gizli bir kısıt, ince bir invariant, belirli bir hatanın workaround'u) tek satırlık yorum eklenir. "Ne yaptığını" anlatan yorumlar yazılmaz — iyi isimlendirme zaten bunu gösterir.
 - **Aşırı mühendislik yok:** Görev neyi gerektiriyorsa o kadar kod. Varsayımsal gelecek ihtiyaçlar için soyutlama eklenmez. Üç benzer satır, erken soyutlamadan iyidir.
 - **Mevcut deseni tekrar et:** Yeni bir arka plan işi eklerken `core/*/worker.py` desenini (QThread + WorkerSignals + factory enjeksiyonu) kopyala — bkz. [[mimari]].
-- **Test edilebilirlik için PyQt5 izolasyonu:** `core/*/__init__.py` dosyaları PyQt5 gerektiren `worker.py` modüllerini re-export etmez; worker sınıfları `from core.X.worker import Y` ile doğrudan alt modülden import edilir. Bu sayede `tests/` PyQt5 kurulu olmayan ortamda da çalışır.
+- **Test edilebilirlik için PySide6 izolasyonu:** `core/*/__init__.py` dosyaları PySide6 gerektiren `worker.py` modüllerini re-export etmez; worker sınıfları `from core.X.worker import Y` ile doğrudan alt modülden import edilir. Bu sayede `tests/` PySide6 kurulu olmayan ortamda da çalışır.
 - **Build ortamı:** Conda değil, temiz `.venv` (python.org Python) kullan — bkz. [[paketleme]].
 - **Değişiklik sonrası doğrulama:** UI değişikliklerinde uygulamayı gerçekten çalıştırıp (offscreen veya görünür) crash olmadığını doğrula; sadece syntax/type check yeterli değildir. `QApplication` oluşturulmadan `QFontDatabase`/diğer Qt GUI sınıfları çağrılmaz (native crash riski) — bkz. [[tema_sistemi]] bilinen tuzaklar.
 - **Minimal diff:** Sadece istenen değişikliğe dokunulur; ilgisiz refactor/temizlik aynı commit'e karıştırılmaz.

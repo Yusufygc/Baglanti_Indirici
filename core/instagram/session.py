@@ -1,8 +1,9 @@
 """Instagram oturum (çerez) saklama — saf, GUI'siz mantık.
 
-Bu modül PyQt/PyQtWebEngine import ETMEZ; testler GUI kurulu olmadan çalışabilir.
-Gerçek giriş penceresi (QtWebEngine) `ui/window/instagram_login_dialog.py`
-içindedir ve buradaki `write_netscape_cookies`/`cookies_path` fonksiyonlarını
+Bu modül Qt import ETMEZ; testler GUI kurulu olmadan çalışabilir. Gerçek giriş
+akışı (kullanıcının gerçek Chrome'unu CDP ile sürerek çerez okuma)
+`ui/window/instagram_login_dialog.py` içindedir ve buradaki
+`write_netscape_cookies`/`cookies_path`/`cdp_cookies_to_netscape` fonksiyonlarını
 kullanarak yt-dlp'nin okuyacağı `cookies.txt` dosyasını üretir.
 """
 
@@ -11,6 +12,8 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
+
+_IG_COOKIE_DOMAINS = ("instagram.com", ".instagram.com")
 
 # Login duvarı mesajı — tek kaynak. Hem core/download/yt_dlp_client.py
 # (_friendly_error) hem ui/window/controller.py (otomatik yönlendirme) kullanır.
@@ -30,8 +33,62 @@ def cookies_path() -> str:
 
 
 def profile_dir() -> str:
-    """QWebEngineProfile kalıcı depolama dizini (oturum tarayıcıda da yaşasın)."""
+    """CDP ile açılan Chrome için ayrı, kalıcı `--user-data-dir`.
+
+    Kullanıcının ana Chrome profiline dokunmaz (CDP zaten ana profile
+    remote-debugging bağlanmayı yasaklar) ve oturum burada kalıcı olur; ikinci
+    girişte kullanıcı yeniden giriş yapmak zorunda kalmaz.
+    """
     return _PROFILE_DIR
+
+
+def find_browser_executable() -> tuple[str, str] | None:
+    """Kurulu Chromium tabanlı tarayıcıyı bulur; `(ad, exe_yolu)` veya `None`.
+
+    Chrome önce denenir (CDP + gerçek tarayıcı = Instagram bot saymaz), sonra
+    Edge. Saf: yalnızca dosya sistemine bakar.
+    """
+    program_files = os.environ.get("PROGRAMFILES", r"C:\Program Files")
+    program_files_x86 = os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")
+    local_appdata = os.environ.get("LOCALAPPDATA", os.path.join(Path.home(), "AppData", "Local"))
+    candidates = (
+        ("chrome", os.path.join(program_files, "Google", "Chrome", "Application", "chrome.exe")),
+        ("chrome", os.path.join(program_files_x86, "Google", "Chrome", "Application", "chrome.exe")),
+        ("chrome", os.path.join(local_appdata, "Google", "Chrome", "Application", "chrome.exe")),
+        ("edge", os.path.join(program_files, "Microsoft", "Edge", "Application", "msedge.exe")),
+        ("edge", os.path.join(program_files_x86, "Microsoft", "Edge", "Application", "msedge.exe")),
+    )
+    for name, path in candidates:
+        if os.path.isfile(path):
+            return name, path
+    return None
+
+
+def cdp_cookies_to_netscape(cdp_cookies) -> list[tuple]:
+    """CDP `Network.getAllCookies` çerezlerini `write_netscape_cookies` demetlerine çevirir.
+
+    Yalnızca `.instagram.com` çerezleri alınır. Her CDP çerezi:
+    `{name, value, domain, path, expires(float, -1=session), secure, httpOnly}`.
+    Dönen: `(domain, path, secure, expiry, name, value)` demetleri (saf fonksiyon).
+    """
+    result: list[tuple] = []
+    for c in cdp_cookies:
+        domain = str(c.get("domain", ""))
+        if not any(domain.endswith(d) or domain == d.lstrip(".") for d in _IG_COOKIE_DOMAINS):
+            continue
+        expires = c.get("expires", 0)
+        expiry = int(expires) if isinstance(expires, (int, float)) and expires and expires > 0 else 0
+        result.append(
+            (
+                domain,
+                c.get("path", "/") or "/",
+                bool(c.get("secure", False)),
+                expiry,
+                str(c.get("name", "")),
+                str(c.get("value", "")),
+            )
+        )
+    return result
 
 
 def has_session() -> bool:
@@ -40,7 +97,7 @@ def has_session() -> bool:
 
 
 def clear_session(clear_profile: bool = True) -> None:
-    """Kayıtlı oturumu siler (cookies dosyası + opsiyonel WebEngine profili)."""
+    """Kayıtlı oturumu siler (cookies dosyası + opsiyonel CDP tarayıcı profili)."""
     try:
         if os.path.isfile(_COOKIES_PATH):
             os.remove(_COOKIES_PATH)

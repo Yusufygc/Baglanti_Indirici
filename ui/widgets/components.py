@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QFrame, QGraphicsDropShadowEffect, QLabel, QLineEdit, QPushButton, QHBoxLayout
-from PyQt5.QtCore import Qt, QSize, pyqtSignal
-from PyQt5.QtGui import QColor, QIcon, QPalette
+from PySide6.QtWidgets import QFrame, QGraphicsDropShadowEffect, QLabel, QLineEdit, QPushButton, QHBoxLayout
+from PySide6.QtCore import Qt, QSize, Signal
+from PySide6.QtGui import QColor, QIcon, QPalette
 
 
 class ModernCard(QFrame):
@@ -72,7 +72,7 @@ class SegmentControl(QFrame):
     Segment control — birden fazla seçenekten birini vurgulayarak seçer.
     selectionChanged(str) sinyali seçim değişiminde tetiklenir.
     """
-    selectionChanged = pyqtSignal(str)
+    selectionChanged = Signal(str)
 
     def __init__(self, options: list[tuple[str, str]], parent=None):
         """

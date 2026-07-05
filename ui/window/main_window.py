@@ -1,11 +1,11 @@
 import os
 import sys
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QFileDialog, QProgressBar, QFrame, QScrollArea, QStackedWidget
+    QFileDialog, QProgressBar, QFrame, QScrollArea, QStackedWidget, QDialog
 )
-from PyQt5.QtCore import Qt, pyqtSlot, QUrl
-from PyQt5.QtGui import QDesktopServices, QColor, QPalette
+from PySide6.QtCore import Qt, Slot, QUrl
+from PySide6.QtGui import QDesktopServices, QColor, QPalette
 
 from ui.themeing.styles import StyleManager
 from ui.themeing.theme import THEMES
@@ -182,9 +182,9 @@ class MainWindow(QWidget):
             self.set_status(f"Giriş özelliği yüklenemedi: {exc}", error=True)
             return
         dialog = InstagramLoginDialog(self)
-        result = dialog.exec_()
+        result = dialog.exec()
         self._refresh_instagram_button()
-        if result == dialog.Accepted:
+        if result == QDialog.DialogCode.Accepted:
             self.set_status("Instagram girişi kaydedildi.")
         else:
             self.set_status("Instagram giriş penceresi kapatıldı.")
@@ -651,7 +651,7 @@ class MainWindow(QWidget):
     #  EVENT HANDLER'LAR
     # ------------------------------------------------------------------ #
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _on_url_changed(self, text: str) -> None:
         stripped = text.strip()
         platform = self._detect_platform(stripped) if stripped else ''
@@ -674,7 +674,7 @@ class MainWindow(QWidget):
             self.lbl_url_feedback.show()
             self._set_ready(False)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _on_format_changed(self, value: str) -> None:
         is_playlist = (value == 'playlist')
         self.filename_input.setEnabled(not is_playlist)
@@ -744,13 +744,13 @@ class MainWindow(QWidget):
 
     # -- Sinyal alıcılar ----------------------------------------------- #
 
-    @pyqtSlot(int, str)
+    @Slot(int, str)
     def update_progress(self, percent: int, status_msg: str) -> None:
         self.progress_bar.setValue(percent)
         self.lbl_percent.setText(f"{percent}%")
         self.lbl_details.setText(status_msg)
 
-    @pyqtSlot()
+    @Slot()
     def handle_finished(self) -> None:
         self.progress_bar.setValue(100)
         self.lbl_percent.setText("100%")
@@ -760,7 +760,7 @@ class MainWindow(QWidget):
         self.set_status("✓  İndirme tamamlandı", error=False)
         self._set_success()
 
-    @pyqtSlot()
+    @Slot()
     def handle_cancelled(self) -> None:
         self.lbl_progress_title.setText("İptal Edildi")
         self.lbl_percent.setText("")
@@ -769,7 +769,7 @@ class MainWindow(QWidget):
         self._render_state(DownloadViewState.CANCELLED)
         self._reset_controls()
 
-    @pyqtSlot(str)
+    @Slot(str)
     def handle_error(self, msg: str) -> None:
         self.progress_container.show()
         self.lbl_progress_title.setText("Hata")
