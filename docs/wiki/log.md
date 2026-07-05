@@ -2,6 +2,10 @@
 
 Kronolojik kayıt, en yeni en üstte. Format: `## [YYYY-AA-GG] [İŞLEM_TİPİ] | Kısa Açıklama`
 
+## [2026-07-05] CHANGE | Aktif font profili "system" (Segoe UI) yapildi (kullanici tercihi)
+
+PyQt5->PySide6 (Qt5->Qt6) gecisi font RENDER'ini degistirdi: eski Qt5'te variable font `Inter Variable` yuklenmeyip UI Segoe UI'a dusuyordu (statik `JetBrains Mono` ise yukleniyordu); Qt6 gercek Inter'i uyguladigi icin gorunum degisti. Kullanici eski (Segoe UI) gorunumu istedi. `font_profiles.py`'ye `system` profili eklendi (`ui_families=("Segoe UI",)`, `mono_families=("JetBrains Mono","Consolas")`) ve `ACTIVE_FONT_PROFILE="system"` yapildi — eski gorunum birebir. Diger profiller (modern/elegant/classic/playful) korundu. Not: font AILELERI/dosyalari degistirilmedi, yalnizca aktif profil; `font_manager.py`'ye kisa sure eklenen tani logu geri alindi.
+
 ## [2026-07-05] FIX | yt-dlp guncelleme kullanici dizinine yazsin + durum cubugu tasmasi
 
 Kurulu exe'de iki sorun: (1) **yt-dlp oto-guncelleme `[WinError 5] Erisim engellendi`** veriyordu — guncelleyici exe-yani `lib/yt_dlp`'ye (Program Files, salt-okunur) yaziyordu. Cozum: `core/config.py::get_yt_dlp_update_dir()` eklendi; guncelleme her zaman yazilabilir `~/.baglanti_indirici/lib`'e yazilir, `get_yt_dlp_lib_dir()` bu dizini gomulu (exe-yani) kopyaya gore ONCELIKLI okur (`update/worker.py` hedefi degistirildi). Uctan uca dogrulandi: 2026.7.4 indirildi/kuruldu. (2) **Durum cubugu yazilari ust uste biniyordu** ("yazilar bozulmus") — uzun guncelleme/hata metni dar pencerede butonla/versiyonla cakisiyordu. Cozum: `lbl_status_bar` yatayda `QSizePolicy.Ignored` + stretch (metin layout'u itmez, kirpilir), guncelleme mesaji kisaltildi, `set_status` uzun metni `QFontMetrics.elidedText` ile "…" yapiyor (tam metin tooltip'te). Not: fontlar ASLINDA saglamdi (`Inter Variable` yukleniyor — log ile dogrulandi); "bozuk" gorunen durum cubugu tasmasiydi. `font_manager.py`'ye tani logu eklendi. Detay: [[yt_dlp_oto_guncelleme]], [[hata_yonetimi_ve_loglama]].

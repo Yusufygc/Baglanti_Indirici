@@ -1,6 +1,13 @@
-ACTIVE_FONT_PROFILE = "modern"
+ACTIVE_FONT_PROFILE = "system"
 
 FONT_PROFILES = {
+    # Windows sistem fontu (Segoe UI). Eski (PyQt5/Qt5) surumun gorunumu: variable
+    # font Inter Qt5'te yuklenmeyip Segoe UI'a dusuyordu; statik JetBrains Mono ise
+    # yukleniyordu. Bu profil o gorunumu birebir korur.
+    "system": {
+        "ui_families": ("Segoe UI",),
+        "mono_families": ("JetBrains Mono", "Consolas"),
+    },
     "modern": {
         "ui_families": ("Inter Variable", "Inter", "Inter Display"),
         "mono_families": ("JetBrains Mono",),
