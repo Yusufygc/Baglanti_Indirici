@@ -98,8 +98,10 @@ class MainWindowController:
             self.view.set_status(f"Platform: {job.platform}  -  Indiriliyor...")
         elif job.status == JobStatus.COMPLETED:
             self.view.set_status("Indirme tamamlandi.")
+            self.view.flash_compact_result(True)
         elif job.status == JobStatus.FAILED:
             self._handle_failed_job(job)
+            self.view.flash_compact_result(False)
         elif job.status == JobStatus.CANCELLED:
             self.view.set_status("Indirme iptal edildi.", error=True)
 

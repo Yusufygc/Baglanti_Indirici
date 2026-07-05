@@ -2,6 +2,14 @@
 
 Kronolojik kayıt, en yeni en üstte. Format: `## [YYYY-AA-GG] [İŞLEM_TİPİ] | Kısa Açıklama`
 
+## [2026-07-05] FIX | Kompakt bubble: tamamlanma geri bildirimi yanlis sinyale bagliydi, yesil/kirmizi cember yapildi
+
+Onceki FIX'te eklenen "indirme tamamlaninca tik" ozelligi **hic calismiyordu**: `MainWindow.handle_finished`'a baglanmisti ama bu metod **hicbir yerde `.connect()` edilmiyor** — olu kod. Gercek tamamlanma akisi `MainWindowController._on_job_updated(job)` (`job.status` kontrolu ile `self.view.set_status(...)` cagirir), tamamen farkli bir yol. Kok neden: mimari yanlis anlasilmis, yanlis metoda kanca atilmis.
+
+Cozum + kullanici istegi dogrultusunda gelistirme: `_on_job_updated`'a `JobStatus.COMPLETED` -> `self.view.flash_compact_result(True)`, `JobStatus.FAILED` -> `self.view.flash_compact_result(False)` eklendi (controller.py). `MainWindow.flash_compact_result` bubble goruluyorsa `CompactBubble.flash_result(success)` cagirir. Bubble tarafinda `flash_success()` -> `flash_result(bool)` oldu: **cemberin arkaplan rengi** basaridaysa yesil (`LOG_COLORS["success"]`), basarisizsa kirmizi (`LOG_COLORS["error"]`) olur (+ tik/carpi glifi, beyaz - hem yesil hem kirmizi zeminde okunur), `_SUCCESS_MS` (1.6sn) sonra normal accent rengine doner. `paintEvent` artik `self._flash_color or self._accent_color` kullanir.
+
+Gercek `MainWindowController._on_job_updated` cagirilarak (mock degil, GERCEK kod yolu) dogrulandi: COMPLETED -> `#2ecc71` (yesil), FAILED -> `#ff4757` (kirmizi), restore -> `None` (normale doner). 62 test etkilenmedi.
+
 ## [2026-07-05] FIX | Kompakt bubble: surukleme kalici olsun, kucuk ikon, indirme tamamlaninca tik
 
 Kullanici geri bildirimi uzerine [[kompakt_mod]] duzeltildi:

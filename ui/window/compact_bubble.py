@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QWidget
 from ui.assets.font_manager import FontManager
 from ui.assets.icons import IconManager
 from ui.themeing.style_sections import compact_bubble_styles
-from ui.themeing.theme import THEMES
+from ui.themeing.theme import LOG_COLORS, THEMES
 from ui.widgets.components import ModernInput
 
 _COLLAPSED_SIZE = 40
@@ -18,6 +18,9 @@ _ANIM_MS = 150
 _FEEDBACK_MS = 1200
 _SUCCESS_MS = 1600
 _CHECK_GLYPH = "✓"
+_CROSS_GLYPH = "✕"
+_SUCCESS_COLOR = LOG_COLORS["success"]
+_FAILURE_COLOR = LOG_COLORS["error"]
 
 
 class CompactBubble(QWidget):
@@ -42,6 +45,7 @@ class CompactBubble(QWidget):
         self._theme_name = "dark"
         self._accent_color = QColor(THEMES["dark"]["accent"])
         self._text_color = QColor(THEMES["dark"]["text_button"])
+        self._flash_color: QColor | None = None
         self._expanded = False
         self._icon_first = True
         self._drag_offset: QPoint | None = None
@@ -111,7 +115,7 @@ class CompactBubble(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(self._accent_color)
+        painter.setBrush(self._flash_color or self._accent_color)
         radius = self.height() / 2
         painter.drawRoundedRect(self.rect(), radius, radius)
         super().paintEvent(event)
@@ -230,17 +234,21 @@ class CompactBubble(QWidget):
             self.restore_requested.emit()
         super().mouseDoubleClickEvent(event)
 
-    # ---- indirme tamamlanma geri bildirimi (tik, sonra normale doner) ----
-    def flash_success(self) -> None:
+    # ---- indirme sonucu geri bildirimi: cember basari->yesil, hata->kirmizi
+    # olur (+ tik/carpi glif), sonra otomatik normal accent rengine doner ----
+    def flash_result(self, success: bool) -> None:
+        self._flash_color = QColor(_SUCCESS_COLOR if success else _FAILURE_COLOR)
+        self.update()
         self._icon_label.setPixmap(QPixmap())  # onceki pixmap'i temizle, text gorunsun
         self._icon_label.setStyleSheet(
-            f"background: transparent; color: {self._text_color.name()}; "
-            f"font-size: 18px; font-weight: 900;"
+            "background: transparent; color: #FFFFFF; font-size: 18px; font-weight: 900;"
         )
-        self._icon_label.setText(_CHECK_GLYPH)
+        self._icon_label.setText(_CHECK_GLYPH if success else _CROSS_GLYPH)
         self._success_timer.start(_SUCCESS_MS)
 
     def _restore_icon(self) -> None:
+        self._flash_color = None
+        self.update()
         self._icon_label.setText("")
         self._icon_label.setStyleSheet("background: transparent;")
         self._icon_label.setPixmap(IconManager.app_icon().pixmap(_ICON_PIXMAP_SIZE, _ICON_PIXMAP_SIZE))

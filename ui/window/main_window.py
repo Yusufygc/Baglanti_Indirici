@@ -233,6 +233,13 @@ class MainWindow(QWidget):
         self.url_input.setText(url)
         self._start_download()
 
+    def flash_compact_result(self, success: bool) -> None:
+        # Controller._on_job_updated tarafindan is COMPLETED/FAILED olunca
+        # cagirilir (gercek tamamlanma akisi budur; eski handle_finished/
+        # handle_error sinyale hic baglanmiyordu, bu yuzden calismıyordu).
+        if self._compact_bubble is not None and self._compact_bubble.isVisible():
+            self._compact_bubble.flash_result(success)
+
     def _refresh_input_placeholders(self) -> None:
         muted = QColor(THEMES[self._theme_name]["text_muted"])
         for line_edit in self.findChildren(ModernInput):
@@ -797,8 +804,6 @@ class MainWindow(QWidget):
         self.success_actions.show()
         self.set_status("✓  İndirme tamamlandı", error=False)
         self._set_success()
-        if self._compact_bubble is not None and self._compact_bubble.isVisible():
-            self._compact_bubble.flash_success()
 
     @Slot()
     def handle_cancelled(self) -> None:
