@@ -1,2 +1,5 @@
-PySide6>=6.8
+# PySide6 6.8 LTS'e sabitlendi: 6.11.x PyInstaller ile derlenen exe'de acilista
+# "DLL load failed while importing QtWidgets: procedure not found" veriyor
+# (shiboken/Qt6 baglama sorunu). 6.8 LTS + PyInstaller kararli calisiyor.
+PySide6>=6.8,<6.9
 yt-dlp>=2025.1.1

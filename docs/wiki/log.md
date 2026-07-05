@@ -2,6 +2,10 @@
 
 Kronolojik kayıt, en yeni en üstte. Format: `## [YYYY-AA-GG] [İŞLEM_TİPİ] | Kısa Açıklama`
 
+## [2026-07-05] FIX | PySide6 6.8 LTS'e sabitlendi (derlenen exe acilista QtWidgets DLL cokmesi)
+
+PyInstaller ile derlenen exe acilista `ImportError: DLL load failed while importing QtWidgets: Belirtilen yordam bulunamadi` (procedure not found) ile cokuyordu. Teshis: venv'de import sorunsuz, bundle DLL/pyd dosyalari venv ile birebir ayni (sha256 SAME), tek tek yukleniyor — ama frozen calisma aninda shiboken/Qt6 baglamasi initialize olamiyordu. Kok neden: **PySide6 6.11.1 (bleeding-edge) + PyInstaller 6.21 uyumsuzlugu**. Cozum: PySide6 6.8 LTS'e (6.8.3) dusuruldu; `requirements.txt` `PySide6>=6.8,<6.9` olarak sabitlendi. 62 test geciyor, frozen exe temiz aciliyor (log: "Uygulama basladi"). Not: PyQt5 kalintisi (`~yqt5` bozuk dist-info) da venv'den temizlendi. Detay: [[paketleme]], [[mimari]].
+
 ## [2026-07-05] FIX | Loglar kullanici-yazilabilir dizine (Program Files kurulumunda acilis cokmesi)
 
 Inno Setup installer ile Program Files'a kurulan exe acilista `PermissionError [WinError 5]` ile cokuyordu: `core/logger.py` log klasorunu `get_base_path()` (exe yani = `C:\Program Files\Baglanti Indirici\logs`) altinda acmaya calisiyordu, Program Files yazilamaz. Cozum: `core/config.py`'ye `get_user_data_dir()` (`~/.baglanti_indirici`) eklendi; loglar artik oraya yaziliyor — ayarlar (`settings.py`), gecmis (`history/repository.py`) ve Instagram oturumu (`session.py`) ile ayni kok. Detay: [[hata_yonetimi_ve_loglama]], [[paketleme]].

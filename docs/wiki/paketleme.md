@@ -11,6 +11,8 @@ python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt pyinstaller
 ```
 
+**PySide6 6.8 LTS'e sabit (`requirements.txt`: `>=6.8,<6.9`).** 6.11.x ile derlenen exe acilista `ImportError: DLL load failed while importing QtWidgets: procedure not found` veriyor (venv'de import sorunsuz, bundle dosyalari birebir ayni, ama frozen'da shiboken/Qt6 baglamasi initialize olamiyor — PySide6 6.11 + PyInstaller 6.21 uyumsuzlugu). 6.8 LTS kararli. Ayrica venv'de PyQt5 kalintisi (eski migration'dan) birakma; bozuk `~yqt5` dist-info PyInstaller'i bozabilir.
+
 ## PyInstaller (`build_pyinstaller.bat`)
 
 - **`--onedir --windowed`** (onefile DEĞİL), ikon `icons/icon.ico`, veri: `icons/`, `ui/assets/fonts/`.
