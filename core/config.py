@@ -60,16 +60,36 @@ def get_ffmpeg_path():
     # 4. Sadece komut ismi döndür (sistem path'inde varsa çalışır)
     return 'ffmpeg'
 
+def get_yt_dlp_update_dir():
+    """
+    yt-dlp oto-guncellemesinin YAZACAGI klasor: kullanici-yazilabilir
+    ~/.baglanti_indirici/lib.
+
+    Exe Program Files'a kurulunca exe-yani lib/ yazilamaz (WinError 5); bu yuzden
+    guncellenen yt_dlp kopyasi kullanici veri dizinine yazilir. Bu klasordeki
+    yt_dlp, exe-yanindaki (salt-okunur, gomulu) kopyaya gore ONCELIKLI okunur
+    (bkz. get_yt_dlp_lib_dir).
+    """
+    path = os.path.join(get_user_data_dir(), 'lib')
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
 def get_yt_dlp_lib_dir():
     """
-    Harici, guncellenebilir yt_dlp paketini barindiran 'lib' klasorunun
-    yolunu dondurur (yt_dlp/ paketinin PARENT dizini, sys.path'e eklenecek olan).
-    Sirasiyla:
-    1. Exe yanindaki lib/yt_dlp (frozen: PyInstaller onefile)
-    2. Proje kokundeki lib/yt_dlp (gelistirme ortaminda opsiyonel)
-    3. None -> harici kopya yok; normal 'import yt_dlp' cozumlemesi (pip/site-packages)
+    Harici yt_dlp paketini barindiran 'lib' klasorunun yolunu dondurur (yt_dlp/
+    paketinin PARENT dizini, sys.path'e eklenecek olan). Oncelik sirasi:
+    1. Kullanici veri dizini ~/.baglanti_indirici/lib/yt_dlp (oto-guncelleme yazar;
+       varsa en guncel surumdur) -> get_yt_dlp_update_dir.
+    2. Exe yanindaki lib/yt_dlp (frozen: gomulu, salt-okunur yedek).
+    3. Proje kokundeki lib/yt_dlp (gelistirme ortaminda opsiyonel).
+    4. None -> harici kopya yok; normal 'import yt_dlp' cozumlemesi (pip/site-packages)
        oldugu gibi calissin.
     """
+    user_lib = os.path.join(get_user_data_dir(), 'lib')
+    if os.path.exists(os.path.join(user_lib, 'yt_dlp', '__init__.py')):
+        return user_lib
+
     base_path = get_base_path()
     candidate = os.path.join(base_path, 'lib')
     if os.path.exists(os.path.join(candidate, 'yt_dlp', '__init__.py')):

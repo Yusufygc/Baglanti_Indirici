@@ -10,8 +10,9 @@ yt-dlp sık güncelleme çıkarır (YouTube değişiklikleri, botlama savaşı).
 
 yt-dlp saf Python paketidir (derlenmiş binary değil). Exe'ye gömmek yerine exe'nin **yanında**, kalıcı bir klasörde (`lib/yt_dlp/`) tutulur:
 
-- `core/config.py::get_yt_dlp_lib_dir()` — `ffmpeg` yolu bulma deseniyle tutarlı: önce exe yanındaki `lib/`, sonra proje kökündeki `lib/` (dev fallback), yoksa `None` (normal pip/site-packages `yt_dlp` kullanılır — geliştirici ortamında davranış değişmez).
-- `main.py` — diğer TÜM importlardan önce bu klasörü `sys.path.insert(0, ...)` ile ekler. Böylece her `import yt_dlp` (örn. `core/download/yt_dlp_client.py`) bu harici kopyadan çözülür.
+- `core/config.py::get_yt_dlp_lib_dir()` (OKUMA/`sys.path`) — öncelik: **1.** kullanıcı-yazılabilir `~/.baglanti_indirici/lib/yt_dlp` (oto-güncelleme buraya yazar; varsa en güncel), **2.** exe yanındaki `lib/yt_dlp` (gömülü, salt-okunur yedek/seed), **3.** proje kökündeki `lib/` (dev), **4.** `None` (pip/site-packages).
+- `core/config.py::get_yt_dlp_update_dir()` (YAZMA) — güncelleyicinin hedefi: **her zaman** `~/.baglanti_indirici/lib`. **Neden ayrı:** exe Program Files'a kurulunca exe-yanı `lib/` yazılamaz → güncelleme `[WinError 5] Erişim engellendi` verirdi. Yazılabilir kullanıcı dizini bunu çözer; oraya yazılan yt_dlp bir sonraki açılışta gömülü kopyaya göre öncelikli okunur.
+- `main.py` — diğer TÜM importlardan önce `get_yt_dlp_lib_dir()` klasörünü `sys.path.insert(0, ...)` ile ekler. Böylece her `import yt_dlp` (örn. `core/download/yt_dlp_client.py`) güncel (kullanıcı dizini) ya da seed (exe yanı) kopyadan çözülür.
 - `BaglantiIndirici.spec` / `build_pyinstaller.bat` — build sonrası pip kurulu yt_dlp, `dist/lib/yt_dlp/` içine kopyalanır (bkz. [[paketleme]]).
 
 **Neden bu şekilde güvenli:** PyInstaller onefile modunda gömülü dosyalar her çalıştırmada `sys._MEIPASS` altında geçici bir dizine açılır — orada "güncelleme" yapılsa bile kalıcı olmaz. Harici `lib/yt_dlp/` klasörü ise normal, kalıcı bir data klasörüdür; OS dosya kilidi sorunu yoktur çünkü değişen şey **çalışan exe değil**, yanındaki bir klasördür.

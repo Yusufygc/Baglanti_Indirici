@@ -2,6 +2,10 @@
 
 Kronolojik kayıt, en yeni en üstte. Format: `## [YYYY-AA-GG] [İŞLEM_TİPİ] | Kısa Açıklama`
 
+## [2026-07-05] FIX | yt-dlp guncelleme kullanici dizinine yazsin + durum cubugu tasmasi
+
+Kurulu exe'de iki sorun: (1) **yt-dlp oto-guncelleme `[WinError 5] Erisim engellendi`** veriyordu — guncelleyici exe-yani `lib/yt_dlp`'ye (Program Files, salt-okunur) yaziyordu. Cozum: `core/config.py::get_yt_dlp_update_dir()` eklendi; guncelleme her zaman yazilabilir `~/.baglanti_indirici/lib`'e yazilir, `get_yt_dlp_lib_dir()` bu dizini gomulu (exe-yani) kopyaya gore ONCELIKLI okur (`update/worker.py` hedefi degistirildi). Uctan uca dogrulandi: 2026.7.4 indirildi/kuruldu. (2) **Durum cubugu yazilari ust uste biniyordu** ("yazilar bozulmus") — uzun guncelleme/hata metni dar pencerede butonla/versiyonla cakisiyordu. Cozum: `lbl_status_bar` yatayda `QSizePolicy.Ignored` + stretch (metin layout'u itmez, kirpilir), guncelleme mesaji kisaltildi, `set_status` uzun metni `QFontMetrics.elidedText` ile "…" yapiyor (tam metin tooltip'te). Not: fontlar ASLINDA saglamdi (`Inter Variable` yukleniyor — log ile dogrulandi); "bozuk" gorunen durum cubugu tasmasiydi. `font_manager.py`'ye tani logu eklendi. Detay: [[yt_dlp_oto_guncelleme]], [[hata_yonetimi_ve_loglama]].
+
 ## [2026-07-05] FIX | PySide6 6.8 LTS'e sabitlendi (derlenen exe acilista QtWidgets DLL cokmesi)
 
 PyInstaller ile derlenen exe acilista `ImportError: DLL load failed while importing QtWidgets: Belirtilen yordam bulunamadi` (procedure not found) ile cokuyordu. Teshis: venv'de import sorunsuz, bundle DLL/pyd dosyalari venv ile birebir ayni (sha256 SAME), tek tek yukleniyor — ama frozen calisma aninda shiboken/Qt6 baglamasi initialize olamiyordu. Kok neden: **PySide6 6.11.1 (bleeding-edge) + PyInstaller 6.21 uyumsuzlugu**. Cozum: PySide6 6.8 LTS'e (6.8.3) dusuruldu; `requirements.txt` `PySide6>=6.8,<6.9` olarak sabitlendi. 62 test geciyor, frozen exe temiz aciliyor (log: "Uygulama basladi"). Not: PyQt5 kalintisi (`~yqt5` bozuk dist-info) da venv'den temizlendi. Detay: [[paketleme]], [[mimari]].

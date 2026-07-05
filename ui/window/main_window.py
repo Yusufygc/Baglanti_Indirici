@@ -2,10 +2,10 @@ import os
 import sys
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QFileDialog, QProgressBar, QFrame, QScrollArea, QStackedWidget, QDialog
+    QFileDialog, QProgressBar, QFrame, QScrollArea, QStackedWidget, QDialog, QSizePolicy
 )
 from PySide6.QtCore import Qt, Slot, QUrl
-from PySide6.QtGui import QDesktopServices, QColor, QPalette
+from PySide6.QtGui import QDesktopServices, QColor, QPalette, QFontMetrics
 
 from ui.themeing.styles import StyleManager
 from ui.themeing.theme import THEMES
@@ -446,6 +446,10 @@ class MainWindow(QWidget):
 
         self.lbl_status_bar = QLabel("Hazır")
         self.lbl_status_bar.setObjectName("statusBarText")
+        # Yatayda "Ignored": etiketin uzun metni layout'u itmez; ayrilan alana
+        # sigar, tasan kisim kirpilir. Yoksa uzun hata/guncelleme metni butonla
+        # ve versiyon etiketiyle UST USTE binerdi (dar pencerede "bozuk yazi").
+        self.lbl_status_bar.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
 
         self.btn_yt_dlp_update = ModernButton("Güncelleme Mevcut", "secondary", self._on_update_clicked)
         self.btn_yt_dlp_update.hide()
@@ -453,8 +457,7 @@ class MainWindow(QWidget):
         lbl_ver = QLabel("v1.0.0")
         lbl_ver.setObjectName("footerText")
 
-        layout.addWidget(self.lbl_status_bar)
-        layout.addStretch()
+        layout.addWidget(self.lbl_status_bar, 1)  # kalan alani al, buton/versiyon sabit
         layout.addWidget(self.btn_yt_dlp_update)
         layout.addWidget(lbl_ver)
         return bar
@@ -465,9 +468,10 @@ class MainWindow(QWidget):
         self.controller.install_yt_dlp_update()
 
     def show_update_available(self, version: str) -> None:
-        self.btn_yt_dlp_update.setText(f"yt-dlp {version} mevcut - Güncelle")
+        self.btn_yt_dlp_update.setText(f"yt-dlp {version} - Güncelle")
         self.btn_yt_dlp_update.show()
-        self.set_status(f"yt-dlp {version} güncellemesi mevcut - aşağıdaki butona tıklayarak güncelleyebilirsiniz")
+        # Kisa tut: buton zaten eylemi anlatiyor; uzun metin durum cubugunu tasirir.
+        self.set_status("Yeni yt-dlp sürümü mevcut.")
 
     def show_update_installing(self) -> None:
         self.btn_yt_dlp_update.setText("Güncelleniyor... %0")
@@ -783,7 +787,12 @@ class MainWindow(QWidget):
 
     def set_status(self, text: str, error: bool = False) -> None:
         color = "#FF4757" if error else "#00d4ff"
-        self.lbl_status_bar.setText(text)
+        # Uzun metni ayrilan genislige gore kirp ("…"); tam metin tooltip'te.
+        # Boylece uzun hata/mesaj durum cubugundaki butonla ust uste binmez.
+        avail = max(self.lbl_status_bar.width(), 160)
+        elided = QFontMetrics(self.lbl_status_bar.font()).elidedText(text, Qt.ElideRight, avail)
+        self.lbl_status_bar.setText(elided)
+        self.lbl_status_bar.setToolTip(text if elided != text else "")
         self.lbl_status_bar.setStyleSheet(
             f"background: transparent; font-size:12px; font-weight:600; color:{color};"
         )

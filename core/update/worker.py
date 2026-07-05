@@ -1,6 +1,6 @@
 from PySide6.QtCore import QObject, QThread, Signal
 
-from core.config import get_yt_dlp_lib_dir
+from core.config import get_yt_dlp_update_dir
 from core.logger import get_logger
 
 from .errors import UpdateError
@@ -10,9 +10,10 @@ logger = get_logger("update_worker")
 
 
 def _default_updater():
-    lib_dir = get_yt_dlp_lib_dir()
-    if not lib_dir:
-        return None
+    # Guncelleme YAZILABILIR kullanici dizinine yapilir (~/.baglanti_indirici/lib);
+    # exe-yani lib/ Program Files'ta salt-okunur olabilir (WinError 5). Bu dizindeki
+    # yt_dlp bir sonraki acilista gomulu kopyaya gore oncelikli yuklenir.
+    lib_dir = get_yt_dlp_update_dir()
     return YtDlpUpdater(lib_dir)
 
 
