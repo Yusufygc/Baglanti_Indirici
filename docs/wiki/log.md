@@ -2,6 +2,16 @@
 
 Kronolojik kayıt, en yeni en üstte. Format: `## [YYYY-AA-GG] [İŞLEM_TİPİ] | Kısa Açıklama`
 
+## [2026-07-05] FIX | Kompakt bubble: surukleme kalici olsun, kucuk ikon, indirme tamamlaninca tik
+
+Kullanici geri bildirimi uzerine [[kompakt_mod]] duzeltildi:
+
+1. **Surukleyip birakinca eski konuma sicrama (kok neden bulundu):** ikonu tutmak icin uzerine gelmek zaten `enterEvent` ile hover-genislemeyi tetikliyor; kullanici surukleyip biraktiktan sonra fare ayrilinca `_collapse()` surukleme ONCESI konuma (statik `_collapsed_pos` onbellegi) donuyordu. Cozum: statik onbellek kaldirildi, konum HER ZAMAN `mapToGlobal(icon.pos())` ile canli hesaplanir (`_icon_global_pos()`); artik ikon ekranda gercekten HERHANGI bir yere suruklenip birakilabiliyor, sonraki hover/collapse dongusu o konumu korur.
+2. **Ikon boyutu kucultuldu:** daraltilmis daire 56px -> 40px (ikon pixmap 28->20). Kucultme sirasinda ikinci bir gizli bug bulundu: collapse animasyonu bitene kadar URL input'u GORUNUR tutuluyordu, QLineEdit'in kendi minimum genisligi pencerenin hedef 40px'e kucalmasini engelleyip ~90px'te kilitliyordu (layout min-size clamp). Cozum: input artik animasyon BASLAMADAN ONCE gizleniyor.
+3. **Indirme tamamlaninca gorsel geri bildirim:** `MainWindow.handle_finished` artik bubble goruluyorsa `CompactBubble.flash_success()` cagirir - ikon 1.6sn boyunca tik (✓) gosterir, sonra otomatik normal app ikonuna doner.
+
+Sol-genisleme (ekran kenari) durumu icin layout sirasi (`_set_layout_order`) dinamik olarak ters cevrilip ikonun anchor konumu HER durumda sabit kaliyor. Script ile dogrulandi: surukle->birak->collapse tam beklenen (x,y,40,40) konuma donuyor (eskiden 90px'te kiliteleniyordu). 62 test etkilenmedi.
+
 ## [2026-07-05] FEATURE | Kompakt mod (yuvarlak bubble + hover-expand URL girisi)
 
 Yeni `ui/window/compact_bubble.py::CompactBubble` — header'daki yeni "◎" butonuyla ana pencere gizlenip yerine kucuk (56x56), her zaman ustte, surunebilir yuvarlak bir bubble gosterilir. Fare uzerine gelince hap sekline genisleyip bir URL girisi acar; Enter'a basinca `MainWindow._start_download()` (ayni yol, sifir tekrar) cagrilir, o an ayarli format/klasor/dosya adiyla indirme otomatik baslar. Cift tiklama tam pencereye donusu tetikler.

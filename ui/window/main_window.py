@@ -797,6 +797,8 @@ class MainWindow(QWidget):
         self.success_actions.show()
         self.set_status("✓  İndirme tamamlandı", error=False)
         self._set_success()
+        if self._compact_bubble is not None and self._compact_bubble.isVisible():
+            self._compact_bubble.flash_success()
 
     @Slot()
     def handle_cancelled(self) -> None:
