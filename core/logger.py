@@ -5,9 +5,11 @@ import sys
 import threading
 from logging.handlers import RotatingFileHandler
 
-from core.config import get_base_path
+from core.config import get_user_data_dir
 
-_LOG_DIR = os.path.join(get_base_path(), "logs")
+# Loglar kullanici-yazilabilir dizine yazilir. Exe Program Files'a kurulursa
+# exe yani (get_base_path) yazilamaz -> WinError 5 ile acilista cokerdi.
+_LOG_DIR = os.path.join(get_user_data_dir(), "logs")
 _LOG_PATH = os.path.join(_LOG_DIR, "app.log")
 _NATIVE_CRASH_LOG_PATH = os.path.join(_LOG_DIR, "native_crash.log")
 _ROOT_NAME = "baglanti_indirici"

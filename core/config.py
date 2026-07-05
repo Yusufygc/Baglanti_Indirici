@@ -13,6 +13,20 @@ def get_base_path():
         # Normal python çalışması
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+def get_user_data_dir():
+    """
+    Kullanici-yazilabilir uygulama veri dizini (~/.baglanti_indirici).
+
+    Kurulu exe Program Files altinda olabilir ve orasi yazilamaz (WinError 5);
+    bu yuzden loglar, ayarlar, gecmis ve Instagram oturum verileri burada tutulur.
+    core/settings.py, core/history/repository.py ve core/instagram/session.py
+    ayni koku kullanir.
+    """
+    path = os.path.join(os.path.expanduser("~"), ".baglanti_indirici")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
 def get_ffmpeg_path():
     """
     ffmpeg.exe dosyasının yolunu bulur.
