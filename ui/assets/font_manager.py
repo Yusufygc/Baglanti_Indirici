@@ -3,10 +3,7 @@ from pathlib import Path
 
 from PySide6.QtGui import QFont, QFontDatabase
 
-from core.logger import get_logger
 from ui.themeing.font_profiles import get_font_profile
-
-logger = get_logger("fonts")
 
 
 class FontManager:
@@ -24,22 +21,10 @@ class FontManager:
         if cls._loaded:
             return
 
-        font_dir = cls.font_dir()
-        loaded = 0
-        failed = 0
-        for font_file in font_dir.glob("*.ttf"):
-            if QFontDatabase.addApplicationFont(str(font_file)) == -1:
-                failed += 1
-            else:
-                loaded += 1
+        for font_file in cls.font_dir().glob("*.ttf"):
+            QFontDatabase.addApplicationFont(str(font_file))
 
         cls._loaded = True
-        logger.info(
-            "Fontlar yuklendi: dir=%s yuklenen=%d basarisiz=%d ui_family=%s",
-            font_dir, loaded, failed, cls.ui_family(),
-        )
-        if loaded == 0:
-            logger.warning("Hicbir font yuklenemedi; sistem yedegine dusuldu (%s)", cls.FALLBACK_UI)
 
     @classmethod
     def application_font(cls):
