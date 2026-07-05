@@ -2,6 +2,14 @@
 
 Kronolojik kayıt, en yeni en üstte. Format: `## [YYYY-AA-GG] [İŞLEM_TİPİ] | Kısa Açıklama`
 
+## [2026-07-05] FIX | YouTube format secimi dusuk kalitede takiliyordu (format string sirasi)
+
+`core/platform/registry.py::youtube_format_policy` format string'i `"best[ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best"` idi. yt-dlp `/` ile ayrilan secenekleri SOLDAN SAGA dener ve ilk ESLESENI kullanir (en yukseginı degil). YouTube neredeyse her zaman dusuk cozunurluklu (~360-720p) bir progressive (video+ses birlesik) mp4 sundugundan `best[ext=mp4]` hep ilk eslesip seciliyordu; asil yuksek cozunurluklu (1080p/4K) ayrik video+ses (DASH) akislarina hic dusulmuyordu. Ozellikle Shorts'ta belirgindi (dusuk format 18/360p secilirdi).
+
+Cozum: sira ters cevrildi -> `"bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"`. Once gercek en-yuksek ayrik akislar denenir (ffmpeg zaten projede var, merge sorunsuz), yalnizca uygun DASH akisi yoksa progressive'e/best'e duser.
+
+Dogrulama (gercek Shorts URL, `simulate=True`): eski siralama `format 18 (360p, avc1, progressive)` seciyordu; yeni siralama `399 (yuksek cozunurluk, av01, video-only) + 140 (m4a, audio-only)` seciyor (merge edilir). Not: `DownloadOptions.quality` alani (`core/domain/models.py`) hala kullanilmiyor/dead — kullaniciya kalite secimi acan bir UI yok, ayri bir gorev.
+
 ## [2026-07-05] CHANGE | Aktif font profili "system" (Segoe UI) yapildi (kullanici tercihi)
 
 PyQt5->PySide6 (Qt5->Qt6) gecisi font RENDER'ini degistirdi: eski Qt5'te variable font `Inter Variable` yuklenmeyip UI Segoe UI'a dusuyordu (statik `JetBrains Mono` ise yukleniyordu); Qt6 gercek Inter'i uyguladigi icin gorunum degisti. Kullanici eski (Segoe UI) gorunumu istedi. `font_profiles.py`'ye `system` profili eklendi (`ui_families=("Segoe UI",)`, `mono_families=("JetBrains Mono","Consolas")`) ve `ACTIVE_FONT_PROFILE="system"` yapildi — eski gorunum birebir. Diger profiller (modern/elegant/classic/playful) korundu. Not: font AILELERI/dosyalari degistirilmedi, yalnizca aktif profil; `font_manager.py`'ye kisa sure eklenen tani logu geri alindi.

@@ -7,7 +7,11 @@ from core.domain.models import DownloadMode, default_format_policy
 def youtube_format_policy(mode: str) -> dict:
     if mode == DownloadMode.AUDIO.value:
         return default_format_policy(mode)
-    return {"format": "best[ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best"}
+    # bestvideo+bestaudio ONCE denenir: YouTube neredeyse her zaman dusuk
+    # cozunurluklu (~720p tavan) progressive bir mp4 sunar; "best[ext=mp4]" ilk
+    # sirada olsaydı yt-dlp ilk eslesen'i sectigi icin HICBIR ZAMAN gercek
+    # yuksek-cozunurluklu (1080p/4K) ayrik video+ses akisina dusmezdi.
+    return {"format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"}
 
 
 class PlatformRegistry:
