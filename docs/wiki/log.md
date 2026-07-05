@@ -2,6 +2,10 @@
 
 Kronolojik kayıt, en yeni en üstte. Format: `## [YYYY-AA-GG] [İŞLEM_TİPİ] | Kısa Açıklama`
 
+## [2026-07-05] FIX | Loglar kullanici-yazilabilir dizine (Program Files kurulumunda acilis cokmesi)
+
+Inno Setup installer ile Program Files'a kurulan exe acilista `PermissionError [WinError 5]` ile cokuyordu: `core/logger.py` log klasorunu `get_base_path()` (exe yani = `C:\Program Files\Baglanti Indirici\logs`) altinda acmaya calisiyordu, Program Files yazilamaz. Cozum: `core/config.py`'ye `get_user_data_dir()` (`~/.baglanti_indirici`) eklendi; loglar artik oraya yaziliyor — ayarlar (`settings.py`), gecmis (`history/repository.py`) ve Instagram oturumu (`session.py`) ile ayni kok. Detay: [[hata_yonetimi_ve_loglama]], [[paketleme]].
+
 ## [2026-07-05] FEATURE | Instagram login: gomulu QtWebEngine terk, kullanicinin gercek Chrome'u + CDP
 
 Gomulu tarayici (once PyQt5, sonra PySide6 QtWebEngine) Instagram giris duvarini gecemedi: PyQt5 reCAPTCHA'ya, PySide6 Qt6 ise risk-tabanli giris zorlamasina (`is_from_rle` -> passkey/WebAuthn; gomulu motor WebAuthn yapamiyor) takildi, dogrudan login'e geri atiyordu. Kesin cozum: gomulu tarayiciyi tamamen birak, kullanicinin **kendi kurulu Chrome/Edge**'ini ayri bir `--user-data-dir` + `--remote-debugging-port` ile ac; kullanici gercek tarayicida normal giris yapar (passkey/reCAPTCHA hepsi calisir), uygulama **Chrome DevTools Protocol** (CDP) ile calisan tarayicinin cerezlerini HAFIZADAN okur (HttpOnly `sessionid` dahil) — diskteki App-Bound Encryption'a (ABE, yt-dlp #10927) hic dokunmadan. CDP icin `QtWebSockets`+`QtNetwork` (PySide6-Essentials) kullanilir; QtWebEngine artik kullanilmiyor. `instagram_login_dialog.py` bastan yazildi (CDP surucusu); `session.py`'ye `find_browser_executable()` + `cdp_cookies_to_netscape()` eklendi; `main.py`'den QtWebEngine'e ozel `AA_ShareOpenGLContexts` kaldirildi. 62 test geciyor. **5 Temmuz 2026: uctan uca dogrulandi — login basarili, login-gerekli reels indi.** Detay: [[instagram_login]], [[paketleme]], [[mimari]].
