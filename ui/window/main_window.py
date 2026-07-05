@@ -11,6 +11,7 @@ from ui.themeing.styles import StyleManager
 from ui.themeing.theme import THEMES
 from ui.widgets.components import ModernCard, HeaderLabel, ModernButton, ModernInput, SegmentControl
 from ui.window.controller import MainWindowController
+from ui.window.compact_bubble import CompactBubble
 from ui.assets.icons import IconManager
 from ui.window.view_state import DownloadViewState
 from core.utils import PlatformHelper
@@ -48,6 +49,7 @@ class MainWindow(QWidget):
         self.queue_rows = {}
         self.history_rows = {}
         self._theme_name = load_theme()
+        self._compact_bubble: CompactBubble | None = None
 
         self._init_ui()
         self._apply_theme()
@@ -145,6 +147,11 @@ class MainWindow(QWidget):
         self.btn_theme_toggle.setObjectName("themeToggleButton")
         self.btn_theme_toggle.setFixedWidth(46)
         self.btn_theme_toggle.setFixedHeight(38)
+        self.btn_compact_mode = ModernButton("◎", "secondary", self._enter_compact_mode)
+        self.btn_compact_mode.setObjectName("themeToggleButton")
+        self.btn_compact_mode.setFixedWidth(46)
+        self.btn_compact_mode.setFixedHeight(38)
+        self.btn_compact_mode.setToolTip("Kompakt moda küçült")
         self.btn_instagram_login = ModernButton(
             self._instagram_button_label(), "secondary", self._open_instagram_login
         )
@@ -155,6 +162,7 @@ class MainWindow(QWidget):
         self.btn_history_page.setFixedWidth(88)
         self.btn_history_page.setFixedHeight(38)
         top_row.addWidget(self.btn_theme_toggle, alignment=Qt.AlignLeft | Qt.AlignTop)
+        top_row.addWidget(self.btn_compact_mode, alignment=Qt.AlignLeft | Qt.AlignTop)
         top_row.addWidget(self.btn_instagram_login, alignment=Qt.AlignLeft | Qt.AlignTop)
         top_row.addWidget(title, stretch=1)
         top_row.addWidget(self.btn_history_page, alignment=Qt.AlignRight | Qt.AlignTop)
@@ -198,6 +206,32 @@ class MainWindow(QWidget):
         self.setStyleSheet(StyleManager.get_main_stylesheet(self._theme_name))
         self.btn_theme_toggle.setText(_THEME_TOGGLE_ICON[self._theme_name])
         self._refresh_input_placeholders()
+        if self._compact_bubble is not None:
+            self._compact_bubble.apply_theme(self._theme_name)
+
+    # -- KOMPAKT MOD ----------------------------------------------------- #
+
+    def _enter_compact_mode(self, *_args) -> None:
+        if self._compact_bubble is None:
+            self._compact_bubble = CompactBubble(self)
+            self._compact_bubble.url_submitted.connect(self._handle_compact_url)
+            self._compact_bubble.restore_requested.connect(self._exit_compact_mode)
+            self._compact_bubble.apply_theme(self._theme_name)
+        self.hide()
+        self._compact_bubble.show_at_last_position()
+
+    def _exit_compact_mode(self, *_args) -> None:
+        if self._compact_bubble is not None:
+            self._compact_bubble.hide()
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def _handle_compact_url(self, url: str) -> None:
+        # Ayri bir indirme yolu YOK: normal URL kutusu + Enter ile birebir ayni
+        # islevi cagirir, boylece o an ayarli format/klasor/dosya adi korunur.
+        self.url_input.setText(url)
+        self._start_download()
 
     def _refresh_input_placeholders(self) -> None:
         muted = QColor(THEMES[self._theme_name]["text_muted"])

@@ -9,6 +9,7 @@ Bu dosya wiki'nin giriş noktasıdır. Kod yazmadan, mimari karar vermeden veya 
 - [[tema_sistemi]] — Koyu/açık tema paleti, toggle mekanizması, kalıcı tercih (`ui/themeing/`, `core/settings.py`).
 - [[hata_yonetimi_ve_loglama]] — Global `sys.excepthook` güvenlik ağı ve dosya tabanlı loglama sistemi (`core/logger.py`).
 - [[instagram_login]] — Kullanıcının gerçek Chrome'unu CDP ile sürerek Instagram girişi (HttpOnly `sessionid` hafızadan, ABE bypass), kalıcı oturum ve yt-dlp'ye cookie aktarımı (`core/instagram/`, `ui/window/instagram_login_dialog.py`).
+- [[kompakt_mod]] — Uygulamayı yuvarlak, her zaman üstte bir bubble'a küçültme; hover ile açılan URL girişi (`ui/window/compact_bubble.py`).
 
 ## Build & Dağıtım
 
@@ -27,5 +28,6 @@ Bu dosya wiki'nin giriş noktasıdır. Kod yazmadan, mimari karar vermeden veya 
 | Tema | [[tema_sistemi]] | `ui/themeing/theme.py`, `ui/window/main_window.py`, `core/settings.py` |
 | Build | [[paketleme]] | `build_pyinstaller.bat`, `installer.iss` |
 | Instagram girişi | [[instagram_login]] | `core/instagram/`, `ui/window/instagram_login_dialog.py`, `core/download/yt_dlp_client.py` |
+| Kompakt mod | [[kompakt_mod]] | `ui/window/compact_bubble.py`, `ui/window/main_window.py`, `ui/themeing/style_sections.py` |
 | Loglama/hata yönetimi | [[hata_yonetimi_ve_loglama]] | `core/logger.py`, `main.py` |
 | Kurallar | [[rules]] | — |

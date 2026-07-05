@@ -347,6 +347,33 @@ def scrollbar_styles(t):
     """
 
 
+def compact_bubble_styles(t):
+    # Kompakt mod bubble'i icin ayri, kucuk bir stylesheet. main_stylesheet()'e
+    # KATILMAZ: main_stylesheet global_styles() ile TUM QWidget'lara opak
+    # background-color veriyor, bu da bubble'in WA_TranslucentBackground'ini
+    # (yuvarlak/hap sekli) bozup koseleri kare gosterirdi.
+    # NOT: #compactBubbleFrame'e background-color/border-radius QSS'i VERILMEZ.
+    # Ust-duzey frameless+WA_TranslucentBackground pencerede QSS arkaplan
+    # doldurma, animasyonlu resize sonrasi yeni genisleyen alani boyamiyor
+    # (Qt/QSS arkaplan onbellegi eski boyuta kilitleniyor, sag taraf seffaf
+    # kaliyor). Bu yuzden yuvarlak/hap sekli dolgusu compact_bubble.py'de
+    # paintEvent() ile elle QPainter ile cizilir (her resize'da yeniden boyanir).
+    return f"""
+        #compactBubbleIcon {{
+            background: transparent;
+        }}
+
+        #compactUrlInput {{
+            background: transparent;
+            border: none;
+            padding: 0px 16px 0px 4px;
+            color: {t["text_button"]};
+            font-weight: 600;
+            selection-background-color: rgba(8, 16, 24, 60);
+        }}
+    """
+
+
 def main_stylesheet(theme_name: str = "dark"):
     t = THEMES.get(theme_name, THEMES["dark"])
     return "\n".join([

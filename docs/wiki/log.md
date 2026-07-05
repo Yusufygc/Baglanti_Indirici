@@ -2,6 +2,14 @@
 
 Kronolojik kayıt, en yeni en üstte. Format: `## [YYYY-AA-GG] [İŞLEM_TİPİ] | Kısa Açıklama`
 
+## [2026-07-05] FEATURE | Kompakt mod (yuvarlak bubble + hover-expand URL girisi)
+
+Yeni `ui/window/compact_bubble.py::CompactBubble` — header'daki yeni "◎" butonuyla ana pencere gizlenip yerine kucuk (56x56), her zaman ustte, surunebilir yuvarlak bir bubble gosterilir. Fare uzerine gelince hap sekline genisleyip bir URL girisi acar; Enter'a basinca `MainWindow._start_download()` (ayni yol, sifir tekrar) cagrilir, o an ayarli format/klasor/dosya adiyla indirme otomatik baslar. Cift tiklama tam pencereye donusu tetikler.
+
+Teknik not: QSS `border-radius`/`background-color` ile denenen ilk yaklasim, ust-duzey frameless+`WA_TranslucentBackground` pencerede resize-animasyonu sonrasi genisleyen alani boyamiyordu (sag taraf seffaf kaliyordu) — cozum: dolgu `paintEvent` ile elle `QPainter.drawRoundedRect` ile cizildi (her resize'da yeniden boyanir, cache sorunu yok). Ayrica layout margin tuzagi bulundu: sag bosluk layout `setContentsMargins`'e konursa input gizliyken bile genisligi sisirip daireyi ovale ceviriyordu (56->70px), duzeltme: bosluk `#compactUrlInput` QSS padding'ine tasindi.
+
+Ekran-goruntusu ile dogrulandi (daraltilmis tam daire, genisletilmis dolu hap sekli) + gercek `MainWindow`+`CompactBubble` uctan uca script testi (kompakt moda gecis, URL gonderimi ile dogru is kuyruga eklenmesi, restore). 62 test etkilenmedi. Detay: [[kompakt_mod]].
+
 ## [2026-07-05] FIX | YouTube format secimi dusuk kalitede takiliyordu (format string sirasi)
 
 `core/platform/registry.py::youtube_format_policy` format string'i `"best[ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best"` idi. yt-dlp `/` ile ayrilan secenekleri SOLDAN SAGA dener ve ilk ESLESENI kullanir (en yukseginı degil). YouTube neredeyse her zaman dusuk cozunurluklu (~360-720p) bir progressive (video+ses birlesik) mp4 sundugundan `best[ext=mp4]` hep ilk eslesip seciliyordu; asil yuksek cozunurluklu (1080p/4K) ayrik video+ses (DASH) akislarina hic dusulmuyordu. Ozellikle Shorts'ta belirgindi (dusuk format 18/360p secilirdi).
